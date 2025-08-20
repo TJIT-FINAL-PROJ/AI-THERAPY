@@ -1,7 +1,8 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
-import AuthPage from "./components/AuthPage"; // make this new file later
+// If you already created this, great — otherwise make a simple placeholder.
+import AuthPage from "./components/AuthPage";
 
 const App = () => {
   return (
