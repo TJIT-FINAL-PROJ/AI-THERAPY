@@ -5,3 +5,16 @@
 html, body, #root {
   height: 100%;
 }
+@layer base {
+  body {
+    @apply text-gray-800 bg-white max-w-[1536px] mx-auto;
+  }
+
+  h1 {
+    @apply text-3xl md:text-5xl lg:text-6xl font-bold;
+  }
+
+  p {
+    @apply text-base md:text-lg;
+  }
+}
