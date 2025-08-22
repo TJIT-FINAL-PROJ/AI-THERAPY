@@ -1,6 +1,6 @@
 import React from "react";
 import Lottie from "lottie-react";
-import landingPageAnimation from '../assets/landingPageAnimation.json';
+import landingPageAnimation from '../assets/landingPageAnimation1.json';
 
 const LandingPage = () => {
   const gradientBg = 'bg-gradient-to-br from-green-50 via-green-100 to-white';
