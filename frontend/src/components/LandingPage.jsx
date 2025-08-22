@@ -1,5 +1,6 @@
 import React from "react";
 import Lottie from "lottie-react";
+import { Link } from "react-router-dom";
 import landingPageAnimation from '../assets/landingPageAnimation1.json';
 
 const LandingPage = () => {
@@ -44,9 +45,11 @@ const LandingPage = () => {
                 and real-time guidance tailored to your needs, all available anytime, anywhere.
               </p>
               <div className="flex flex-col md:flex-row items-center justify-center md:justify-start mt-5 space-y-3 md:space-y-0 md:space-x-5">
-                <button className="bg-emerald-500 text-white px-7 py-3 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-lg">
-                  Get Started
-                </button>
+                <Link
+                    to="/auth"
+                    className="bg-emerald-500 text-white px-7 py-3 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-lg text-center">
+                      Get Started
+                </Link>
                 <a href="#" className="text-emerald-500 font-semibold hover:underline">
                   How it works?
                 </a>
