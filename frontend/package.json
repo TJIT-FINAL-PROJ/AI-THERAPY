@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.56.0",
     "lottie": "^0.0.1",
     "lottie-react": "^2.4.1",
     "react": "^19.1.1",

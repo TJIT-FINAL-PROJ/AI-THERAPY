@@ -1,16 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Lottie from "lottie-react";
 import { Link } from "react-router-dom";
-import landingPageAnimation from '../assets/landingPageAnimation1.json';
+import { supabase } from "../supabaseClient";
+import landingPageAnimation from "../assets/landingPageAnimation1.json";
 
 const LandingPage = () => {
-  const gradientBg = 'bg-gradient-to-br from-green-50 via-green-100 to-white';
-  const greenText = 'text-emerald-500';
-  const darkText = 'text-emerald-700';
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // ✅ check session
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    // ✅ listen to changes (login/logout)
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const gradientBg = "bg-gradient-to-br from-green-50 via-green-100 to-white";
+  const greenText = "text-emerald-500";
+  const darkText = "text-emerald-700";
 
   return (
     <div className={`h-[100vh] flex flex-col ${gradientBg} overflow-x-hidden`}>
-      {/* Header (moved outside container, sticks at top) */}
+      {/* Header */}
       <header className="w-full flex justify-between items-center py-4 px-12 md:px-28 bg-transparent">
         <div className="flex items-center">
           <span className="text-2xl font-bold text-green-700">TASKEEASE</span>
@@ -21,10 +45,29 @@ const LandingPage = () => {
           <a href="#" className="hover:text-green-900">Blog</a>
         </nav>
         <div className="flex items-center space-x-3 md:space-x-4">
-          <a href="#" className="hidden md:block text-emerald-700 hover:text-green-900">Sign in</a>
-          <button className="bg-emerald-500 text-white px-5 py-2 rounded-full font-semibold hover:bg-emerald-600 transition-colors">
-            Sign up
-          </button>
+          {!user ? (
+            <>
+              <Link 
+                to="/auth?mode=login" 
+                className="hidden md:block text-emerald-700 hover:text-green-900"
+              >
+                Sign in
+              </Link>
+              <Link 
+                to="/auth?mode=signup" 
+                className="bg-emerald-500 text-white px-5 py-2 rounded-full font-semibold hover:bg-emerald-600 transition-colors"
+              >
+                Sign up
+              </Link>
+            </>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="bg-emerald-500 text-white px-5 py-2 rounded-full font-semibold hover:bg-emerald-600 transition-colors"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </header>
 
@@ -46,9 +89,10 @@ const LandingPage = () => {
               </p>
               <div className="flex flex-col md:flex-row items-center justify-center md:justify-start mt-5 space-y-3 md:space-y-0 md:space-x-5">
                 <Link
-                    to="/auth"
-                    className="bg-emerald-500 text-white px-7 py-3 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-lg text-center">
-                      Get Started
+                  to="/auth?mode=signup"
+                  className="bg-emerald-500 text-white px-7 py-3 rounded-full font-semibold hover:bg-emerald-600 transition-colors shadow-lg text-center"
+                >
+                  Get Started
                 </Link>
                 <a href="#" className="text-emerald-500 font-semibold hover:underline">
                   How it works?
@@ -56,7 +100,7 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Right Animation (adjusted) */}
+            {/* Right Animation */}
             <div className="md:w-1/2 flex justify-center md:justify-end ">
               <div className="w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[500px] md:h-[500px] lg:w-[560px] lg:h-[560px] flex items-center justify-center">
                 <Lottie
