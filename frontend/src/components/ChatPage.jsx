@@ -50,7 +50,7 @@ const ChatPage = () => {
       <aside
         className={`${
           isSidebarOpen ? "w-64" : "w-16"
-        } bg-emerald-600 text-white flex flex-col justify-between transition-all duration-300`}
+        } bg-gradient-to-b from-emerald-700 to-emerald-900 text-white flex flex-col justify-between transition-all duration-300`}
       >
         {/* Top Links */}
         <div>
@@ -62,7 +62,7 @@ const ChatPage = () => {
             )}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-lg hover:bg-emerald-700"
+              className="rounded-lg hover:bg-emerald-800"
             >
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -70,7 +70,7 @@ const ChatPage = () => {
           <nav className="mt-6 space-y-2">
             <Link
               to="/chat"
-              className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+              className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
             >
               <Home className="w-5 h-5" />
               {isSidebarOpen && <span>Chat</span>}
@@ -78,7 +78,7 @@ const ChatPage = () => {
             {isSidebarOpen && (
               <Link
                 to="/settings"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
               >
                 <Settings className="w-5 h-5" />
                 <span>Settings</span>
@@ -91,7 +91,7 @@ const ChatPage = () => {
         <div className="mb-4 space-y-2">
           <Link
             to="/profile"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
           >
             <User className="w-5 h-5" />
             {isSidebarOpen && <span>Profile</span>}
@@ -107,7 +107,7 @@ const ChatPage = () => {
       </aside>
 
       {/* Main Chat Section */}
-      <main className="flex-1 flex flex-col bg-gray-50">
+      <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
         {/* Chat Messages */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.map((msg, index) => (
@@ -118,10 +118,10 @@ const ChatPage = () => {
               }`}
             >
               <div
-                className={`px-4 py-2 rounded-2xl max-w-xs ${
+                className={`px-4 py-2 rounded-2xl max-w-xs shadow ${
                   msg.sender === "user"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-gray-200 text-gray-800"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-gray-800 border border-emerald-200"
                 }`}
               >
                 {msg.text}
@@ -131,7 +131,7 @@ const ChatPage = () => {
         </div>
 
         {/* Input Box */}
-        <div className="p-4 border-t bg-white flex items-center gap-2">
+        <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
           <input
             type="text"
             value={input}
@@ -142,7 +142,7 @@ const ChatPage = () => {
           />
           <button
             onClick={handleSend}
-            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600"
+            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700"
           >
             <Send className="w-5 h-5" />
           </button>
@@ -168,7 +168,7 @@ const ChatPage = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
               >
                 Logout
               </button>
