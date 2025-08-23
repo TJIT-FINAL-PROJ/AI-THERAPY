@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import OnboardingModal from "../components/OnboardingModal";
 
@@ -57,7 +57,6 @@ const AuthPage = () => {
           return;
         }
 
-        // ✅ after signup → onboarding
         setShowOnboarding(true);
       }
     } catch (err) {
@@ -162,6 +161,16 @@ const AuthPage = () => {
               {isLogin ? "Sign Up" : "Login"}
             </button>
           </p>
+
+          {/* ✅ Back to Home Link */}
+          <div className="mt-4 text-center">
+            <Link
+              to="/"
+              className="text-emerald-600 font-medium hover:underline"
+            >
+              ← Back to Home
+            </Link>
+          </div>
         </div>
       )}
     </section>
