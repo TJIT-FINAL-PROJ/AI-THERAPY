@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
-import { User, LogOut, Home } from "lucide-react"; // icons (you can change)
+import { User, LogOut, Home, Send, Menu, X, Settings } from "lucide-react";
 
 const ChatPage = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sidebar toggle
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Chat state
+  const [messages, setMessages] = useState([
+    { sender: "ai", text: "👋 Hi there! How are you feeling today?" },
+  ]);
+  const [input, setInput] = useState("");
 
   const handleLogout = async () => {
     setLoading(true);
@@ -15,22 +24,66 @@ const ChatPage = () => {
     navigate("/");
   };
 
+  // Handle sending a message
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    // Add user message
+    const newMessage = { sender: "user", text: input.trim() };
+    setMessages((prev) => [...prev, newMessage]);
+
+    // Clear input
+    setInput("");
+
+    // Temporary AI demo reply
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "💡 Thanks for sharing, I'm here to listen." },
+      ]);
+    }, 800);
+  };
+
   return (
     <div className="h-screen flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-emerald-600 text-white flex flex-col justify-between">
+      <aside
+        className={`${
+          isSidebarOpen ? "w-64" : "w-16"
+        } bg-emerald-600 text-white flex flex-col justify-between transition-all duration-300`}
+      >
         {/* Top Links */}
         <div>
-          <h1 className="p-4 text-xl font-bold">Therapy Chat</h1>
+          <div className="flex items-center justify-between p-4">
+            {isSidebarOpen && (
+              <h1 className="text-xl font-bold transition-opacity duration-300">
+                Therapy Chat
+              </h1>
+            )}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 rounded-lg hover:bg-emerald-700"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
           <nav className="mt-6 space-y-2">
             <Link
               to="/chat"
               className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
             >
               <Home className="w-5 h-5" />
-              <span>Chat</span>
+              {isSidebarOpen && <span>Chat</span>}
             </Link>
-            {/* Add more nav links if needed */}
+            {isSidebarOpen && (
+              <Link
+                to="/settings"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+              >
+                <Settings className="w-5 h-5" />
+                <span>Settings</span>
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -41,23 +94,59 @@ const ChatPage = () => {
             className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
           >
             <User className="w-5 h-5" />
-            <span>Profile</span>
+            {isSidebarOpen && <span>Profile</span>}
           </Link>
           <button
             onClick={() => setShowModal(true)}
             className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-600 rounded-lg text-left"
           >
             <LogOut className="w-5 h-5" />
-            <span>Logout</span>
+            {isSidebarOpen && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-gray-50">
-        <p className="text-gray-700 text-lg">
-          👋 This is your chat area. Connect AI chat here later.
-        </p>
+      {/* Main Chat Section */}
+      <main className="flex-1 flex flex-col bg-gray-50">
+        {/* Chat Messages */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                msg.sender === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`px-4 py-2 rounded-2xl max-w-xs ${
+                  msg.sender === "user"
+                    ? "bg-emerald-500 text-white"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input Box */}
+        <div className="p-4 border-t bg-white flex items-center gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Type your message..."
+            className="flex-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button
+            onClick={handleSend}
+            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
       </main>
 
       {/* Logout Confirmation Modal */}
@@ -69,7 +158,10 @@ const ChatPage = () => {
             </h2>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setIsSidebarOpen(false); // collapse sidebar on cancel
+                }}
                 className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
               >
                 Cancel
