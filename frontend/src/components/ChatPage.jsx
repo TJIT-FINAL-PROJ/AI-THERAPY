@@ -75,14 +75,23 @@ const ChatPage = () => {
     setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
-    // Temporary AI reply
-    setTimeout(async () => {
+    // ✅ Ask backend for AI reply
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input.trim() }),
+      });
+
+      const data = await res.json();
+
       const aiMessage = {
         user_id: userId,
         sender: "ai",
-        text: "💡 Thanks for sharing, I'm here to listen.",
+        text: data.reply || "⚠️ Sorry, I couldn't generate a reply.",
       };
 
+      // Save AI reply in DB
       const { data: savedAiMsg, error: aiError } = await supabase
         .from("messages")
         .insert([aiMessage])
@@ -91,7 +100,9 @@ const ChatPage = () => {
       if (!aiError && savedAiMsg) {
         setMessages((prev) => [...prev, savedAiMsg[0]]);
       }
-    }, 800);
+    } catch (err) {
+      console.error("AI fetch error:", err);
+    }
   };
 
   return (
