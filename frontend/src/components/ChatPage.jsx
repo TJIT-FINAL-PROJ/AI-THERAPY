@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
-import { User, LogOut, Home, Send, Menu, X, Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Send } from "lucide-react";
+import Sidebar from "../components/Sidebar"; // <-- import Sidebar
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -16,6 +17,10 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
 
+  // Sessions state
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+
   // ✅ Fetch logged-in user
   useEffect(() => {
     const getUser = async () => {
@@ -24,24 +29,47 @@ const ChatPage = () => {
         navigate("/"); // kick out if not logged in
       } else {
         setUserId(data.user.id);
-        fetchMessages(data.user.id);
+        fetchSessions(data.user.id);
       }
     };
     getUser();
   }, [navigate]);
 
-  // ✅ Fetch existing messages from Supabase
-  const fetchMessages = async (uid) => {
+  // ✅ Fetch all sessions for this user
+  const fetchSessions = async (uid) => {
     const { data, error } = await supabase
-      .from("messages")
+      .from("sessions")
       .select("*")
       .eq("user_id", uid)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setMessages(data);
+      setSessions(data);
+      if (data.length > 0 && !currentSessionId) {
+        setCurrentSessionId(data[0].id); // default: latest session
+      }
     }
   };
+
+  // ✅ Fetch messages for current session
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!userId || !currentSessionId) return;
+
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("session_id", currentSessionId)
+        .order("created_at", { ascending: true });
+
+      if (!error && data) {
+        setMessages(data);
+      }
+    };
+
+    fetchMessages();
+  }, [userId, currentSessionId]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -52,15 +80,15 @@ const ChatPage = () => {
 
   // ✅ Handle sending a message
   const handleSend = async () => {
-    if (!input.trim() || !userId) return;
+    if (!input.trim() || !userId || !currentSessionId) return;
 
     const userMessage = {
       user_id: userId,
+      session_id: currentSessionId,
       sender: "user",
       text: input.trim(),
     };
 
-    // Save user message to DB
     const { data: savedUserMsg, error: userError } = await supabase
       .from("messages")
       .insert([userMessage])
@@ -71,7 +99,6 @@ const ChatPage = () => {
       return;
     }
 
-    // Add user message locally
     setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
@@ -79,6 +106,7 @@ const ChatPage = () => {
     setTimeout(async () => {
       const aiMessage = {
         user_id: userId,
+        session_id: currentSessionId,
         sender: "ai",
         text: "💡 Thanks for sharing, I'm here to listen.",
       };
@@ -94,91 +122,77 @@ const ChatPage = () => {
     }, 800);
   };
 
+  // ✅ Start new conversation
+  const handleNewConversation = async () => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert([{ user_id: userId }])
+      .select();
+
+    if (!error && data.length > 0) {
+      setCurrentSessionId(data[0].id);
+      setMessages([]);
+      setSessions((prev) => [data[0], ...prev]);
+    }
+  };
+
   return (
     <div className="h-screen flex">
       {/* Sidebar */}
-      <aside
-        className={`${
-          isSidebarOpen ? "w-64" : "w-16"
-        } bg-gradient-to-b from-emerald-700 to-emerald-900 text-white flex flex-col justify-between transition-all duration-300`}
-      >
-        {/* Top Links */}
-        <div>
-          <div className="flex items-center justify-between p-4">
-            {isSidebarOpen && (
-              <h1 className="text-xl font-bold transition-opacity duration-300">
-                Therapy Chat
-              </h1>
-            )}
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="rounded-lg hover:bg-emerald-800"
-            >
-              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-          <nav className="mt-6 space-y-2">
-            <Link
-              to="/chat"
-              className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
-            >
-              <Home className="w-5 h-5" />
-              {isSidebarOpen && <span>Chat</span>}
-            </Link>
-            {isSidebarOpen && (
-              <Link
-                to="/settings"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
-              >
-                <Settings className="w-5 h-5" />
-                <span>Settings</span>
-              </Link>
-            )}
-          </nav>
-        </div>
-
-        {/* Bottom - Profile & Logout */}
-        <div className="mb-4 space-y-2">
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
-          >
-            <User className="w-5 h-5" />
-            {isSidebarOpen && <span>Profile</span>}
-          </Link>
-          <button
-            onClick={() => setShowModal(true)}
-            className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-600 rounded-lg text-left"
-          >
-            <LogOut className="w-5 h-5" />
-            {isSidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        setCurrentSessionId={setCurrentSessionId}
+        handleNewConversation={handleNewConversation}
+        handleLogout={handleLogout}
+        setShowModal={setShowModal}
+      />
 
       {/* Main Chat Section */}
       <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
         {/* Chat Messages */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                msg.sender === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`px-4 py-2 rounded-2xl max-w-xs shadow ${
-                  msg.sender === "user"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white text-gray-800 border border-emerald-200"
-                }`}
-              >
-                {msg.text}
-              </div>
-            </div>
-          ))}
+<div className="flex-1 p-6 overflow-y-auto space-y-4">
+  {messages.length === 0 ? (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-gray-500 text-center">
+        💬 No conversations yet. Start by sending a message!
+      </p>
+    </div>
+  ) : (
+    messages.map((msg, index) => (
+      <div
+        key={index}
+        className={`flex ${
+          msg.sender === "user" ? "justify-end" : "justify-start"
+        }`}
+      >
+        <div
+          className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
+            msg.sender === "user"
+              ? "bg-emerald-600 text-white"
+              : "bg-white text-gray-800 border border-emerald-200"
+          }`}
+        >
+          <span>{msg.text}</span>
+          <span
+            className={`text-xs mt-1 self-end ${
+              msg.sender === "user" ? "text-gray-300" : "text-gray-500"
+            }`}
+          >
+            {new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
         </div>
+      </div>
+    ))
+  )}
+</div>
 
         {/* Input Box */}
         <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
@@ -199,7 +213,7 @@ const ChatPage = () => {
         </div>
       </main>
 
-      {/* Logout Confirmation Modal */}
+      {/* Logout Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
