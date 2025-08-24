@@ -10,18 +10,45 @@ const OnboardingModal = ({ onComplete }) => {
     if (!mood || !goal) return alert("Please fill both fields ✍️");
     setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
+    // ✅ Step 1: update metadata (your existing logic)
+    const { data: updatedUser, error } = await supabase.auth.updateUser({
       data: { mood, goal },
     });
-
-    setLoading(false);
 
     if (error) {
       console.error("Error updating metadata:", error.message);
       alert("Something went wrong. Try again.");
-    } else {
-      onComplete(); // ✅ tell parent that onboarding is complete
+      setLoading(false);
+      return;
     }
+
+    // ✅ Step 2: also insert into onboarding table
+    try {
+      const userId = updatedUser?.user?.id; // get user ID
+      if (!userId) throw new Error("User not found after update");
+
+      const { error: insertError } = await supabase
+        .from("onboarding")
+        .upsert(
+          {
+            user_id: userId,
+            answers: { mood, goal }, // keep JSON format
+          },
+          { onConflict: "user_id" } // makes sure 1 row per user
+        );
+
+      if (insertError) throw insertError;
+    } catch (err) {
+      console.error("Error saving onboarding:", err.message);
+      alert("Something went wrong while saving onboarding.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+
+    // ✅ tell parent that onboarding is complete
+    onComplete();
   };
 
   return (

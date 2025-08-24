@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
 import { User, LogOut, Home, Send, Menu, X, Settings } from "lucide-react";
@@ -12,10 +12,36 @@ const ChatPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Chat state
-  const [messages, setMessages] = useState([
-    { sender: "ai", text: "👋 Hi there! How are you feeling today?" },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [userId, setUserId] = useState(null);
+
+  // ✅ Fetch logged-in user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        navigate("/"); // kick out if not logged in
+      } else {
+        setUserId(data.user.id);
+        fetchMessages(data.user.id);
+      }
+    };
+    getUser();
+  }, [navigate]);
+
+  // ✅ Fetch existing messages from Supabase
+  const fetchMessages = async (uid) => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setMessages(data);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);
@@ -24,23 +50,47 @@ const ChatPage = () => {
     navigate("/");
   };
 
-  // Handle sending a message
-  const handleSend = () => {
-    if (!input.trim()) return;
+  // ✅ Handle sending a message
+  const handleSend = async () => {
+    if (!input.trim() || !userId) return;
 
-    // Add user message
-    const newMessage = { sender: "user", text: input.trim() };
-    setMessages((prev) => [...prev, newMessage]);
+    const userMessage = {
+      user_id: userId,
+      sender: "user",
+      text: input.trim(),
+    };
 
-    // Clear input
+    // Save user message to DB
+    const { data: savedUserMsg, error: userError } = await supabase
+      .from("messages")
+      .insert([userMessage])
+      .select();
+
+    if (userError) {
+      console.error("Error saving message:", userError.message);
+      return;
+    }
+
+    // Add user message locally
+    setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
-    // Temporary AI demo reply
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: "💡 Thanks for sharing, I'm here to listen." },
-      ]);
+    // Temporary AI reply
+    setTimeout(async () => {
+      const aiMessage = {
+        user_id: userId,
+        sender: "ai",
+        text: "💡 Thanks for sharing, I'm here to listen.",
+      };
+
+      const { data: savedAiMsg, error: aiError } = await supabase
+        .from("messages")
+        .insert([aiMessage])
+        .select();
+
+      if (!aiError && savedAiMsg) {
+        setMessages((prev) => [...prev, savedAiMsg[0]]);
+      }
     }, 800);
   };
 
@@ -50,7 +100,7 @@ const ChatPage = () => {
       <aside
         className={`${
           isSidebarOpen ? "w-64" : "w-16"
-        } bg-emerald-600 text-white flex flex-col justify-between transition-all duration-300`}
+        } bg-gradient-to-b from-emerald-700 to-emerald-900 text-white flex flex-col justify-between transition-all duration-300`}
       >
         {/* Top Links */}
         <div>
@@ -62,7 +112,7 @@ const ChatPage = () => {
             )}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-lg hover:bg-emerald-700"
+              className="rounded-lg hover:bg-emerald-800"
             >
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -70,7 +120,7 @@ const ChatPage = () => {
           <nav className="mt-6 space-y-2">
             <Link
               to="/chat"
-              className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+              className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
             >
               <Home className="w-5 h-5" />
               {isSidebarOpen && <span>Chat</span>}
@@ -78,7 +128,7 @@ const ChatPage = () => {
             {isSidebarOpen && (
               <Link
                 to="/settings"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
               >
                 <Settings className="w-5 h-5" />
                 <span>Settings</span>
@@ -91,7 +141,7 @@ const ChatPage = () => {
         <div className="mb-4 space-y-2">
           <Link
             to="/profile"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-700 rounded-lg"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
           >
             <User className="w-5 h-5" />
             {isSidebarOpen && <span>Profile</span>}
@@ -107,7 +157,7 @@ const ChatPage = () => {
       </aside>
 
       {/* Main Chat Section */}
-      <main className="flex-1 flex flex-col bg-gray-50">
+      <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
         {/* Chat Messages */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.map((msg, index) => (
@@ -118,10 +168,10 @@ const ChatPage = () => {
               }`}
             >
               <div
-                className={`px-4 py-2 rounded-2xl max-w-xs ${
+                className={`px-4 py-2 rounded-2xl max-w-xs shadow ${
                   msg.sender === "user"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-gray-200 text-gray-800"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white text-gray-800 border border-emerald-200"
                 }`}
               >
                 {msg.text}
@@ -131,7 +181,7 @@ const ChatPage = () => {
         </div>
 
         {/* Input Box */}
-        <div className="p-4 border-t bg-white flex items-center gap-2">
+        <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
           <input
             type="text"
             value={input}
@@ -142,7 +192,7 @@ const ChatPage = () => {
           />
           <button
             onClick={handleSend}
-            className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600"
+            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700"
           >
             <Send className="w-5 h-5" />
           </button>
@@ -160,7 +210,7 @@ const ChatPage = () => {
               <button
                 onClick={() => {
                   setShowModal(false);
-                  setIsSidebarOpen(false); // collapse sidebar on cancel
+                  setIsSidebarOpen(false);
                 }}
                 className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
               >
@@ -168,7 +218,7 @@ const ChatPage = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
               >
                 Logout
               </button>
