@@ -30,12 +30,14 @@ const AuthPage = () => {
     checkSession();
   }, [mode]);
 
+  // ✅ Login/Signup
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
 
     try {
       if (isLogin) {
+        // LOGIN
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -43,32 +45,61 @@ const AuthPage = () => {
         if (error) return setMessage(error.message);
 
         setCurrentUser(data.user);
+
         if (!data.user?.user_metadata?.mood || !data.user?.user_metadata?.goal) {
           setShowOnboarding(true);
         } else {
           navigate("/chat");
         }
       } else {
+        // SIGNUP
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName } },
+          options: {
+            data: { full_name: fullName },
+          },
         });
         if (error) return setMessage(error.message);
 
-        setCurrentUser(data.user);
-        setShowOnboarding(true);
+        if (data.user) {
+          // ✅ Immediately log them in
+          const { data: loginData, error: loginError } =
+            await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+          if (loginError) return setMessage(loginError.message);
+
+          setCurrentUser(loginData.user);
+
+          if (!loginData.user?.user_metadata?.mood || !loginData.user?.user_metadata?.goal) {
+            setShowOnboarding(true);
+          } else {
+            navigate("/chat");
+          }
+        }
       }
     } catch (err) {
       setMessage(err.message);
     }
   };
 
+  // ✅ Google login
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
-    if (error) setMessage(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { queryParams: { prompt: "consent" } },
+      });
+      if (error) setMessage(error.message);
+    } catch (err) {
+      setMessage(err.message);
+    }
   };
 
+  // ✅ OTP login
   const handleOtpLogin = async () => {
     if (!email) return alert("Please enter your email first");
     const { error } = await supabase.auth.signInWithOtp({ email });
@@ -79,6 +110,7 @@ const AuthPage = () => {
     }
   };
 
+  // ✅ Verify OTP
   const handleOtpVerify = async () => {
     if (!otpCode) return alert("Enter the OTP you received in email");
     const { data, error } = await supabase.auth.verifyOtp({
