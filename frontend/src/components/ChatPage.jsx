@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
 import { User, LogOut, Home, Send, Menu, X, Settings } from "lucide-react";
@@ -12,10 +12,36 @@ const ChatPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Chat state
-  const [messages, setMessages] = useState([
-    { sender: "ai", text: "👋 Hi there! How are you feeling today?" },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [userId, setUserId] = useState(null);
+
+  // ✅ Fetch logged-in user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        navigate("/"); // kick out if not logged in
+      } else {
+        setUserId(data.user.id);
+        fetchMessages(data.user.id);
+      }
+    };
+    getUser();
+  }, [navigate]);
+
+  // ✅ Fetch existing messages from Supabase
+  const fetchMessages = async (uid) => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setMessages(data);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);
@@ -24,23 +50,47 @@ const ChatPage = () => {
     navigate("/");
   };
 
-  // Handle sending a message
-  const handleSend = () => {
-    if (!input.trim()) return;
+  // ✅ Handle sending a message
+  const handleSend = async () => {
+    if (!input.trim() || !userId) return;
 
-    // Add user message
-    const newMessage = { sender: "user", text: input.trim() };
-    setMessages((prev) => [...prev, newMessage]);
+    const userMessage = {
+      user_id: userId,
+      sender: "user",
+      text: input.trim(),
+    };
 
-    // Clear input
+    // Save user message to DB
+    const { data: savedUserMsg, error: userError } = await supabase
+      .from("messages")
+      .insert([userMessage])
+      .select();
+
+    if (userError) {
+      console.error("Error saving message:", userError.message);
+      return;
+    }
+
+    // Add user message locally
+    setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
-    // Temporary AI demo reply
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: "💡 Thanks for sharing, I'm here to listen." },
-      ]);
+    // Temporary AI reply
+    setTimeout(async () => {
+      const aiMessage = {
+        user_id: userId,
+        sender: "ai",
+        text: "💡 Thanks for sharing, I'm here to listen.",
+      };
+
+      const { data: savedAiMsg, error: aiError } = await supabase
+        .from("messages")
+        .insert([aiMessage])
+        .select();
+
+      if (!aiError && savedAiMsg) {
+        setMessages((prev) => [...prev, savedAiMsg[0]]);
+      }
     }, 800);
   };
 
@@ -160,7 +210,7 @@ const ChatPage = () => {
               <button
                 onClick={() => {
                   setShowModal(false);
-                  setIsSidebarOpen(false); // collapse sidebar on cancel
+                  setIsSidebarOpen(false);
                 }}
                 className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
               >
