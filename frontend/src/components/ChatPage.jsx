@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Send } from "lucide-react";
-import Sidebar from "../components/Sidebar"; // <-- import Sidebar
+import Sidebar from "../components/Sidebar";
+import Lottie from "lottie-react";
+import chatbotAnimation from "../assets/chatbot.json"; // 👈 import your Lottie file
 
 const ChatPage = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Sidebar toggle
+  // Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Chat state
@@ -17,16 +19,32 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
 
-  // Sessions state
+  // Sessions
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
 
-  // ✅ Fetch logged-in user
+  // Typing indicator state
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Store pending AI reply until animation finishes
+  const pendingAiReply = useRef(null);
+
+  // Dummy ref at the bottom of messages
+  const bottomRef = useRef(null);
+
+  // Always scroll to bottom whenever messages update
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, currentSessionId, isTyping]);
+
+  // Fetch logged-in user
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
-        navigate("/"); // kick out if not logged in
+        navigate("/");
       } else {
         setUserId(data.user.id);
         fetchSessions(data.user.id);
@@ -35,7 +53,7 @@ const ChatPage = () => {
     getUser();
   }, [navigate]);
 
-  // ✅ Fetch all sessions for this user
+  // Fetch all sessions
   const fetchSessions = async (uid) => {
     const { data, error } = await supabase
       .from("sessions")
@@ -46,12 +64,12 @@ const ChatPage = () => {
     if (!error && data) {
       setSessions(data);
       if (data.length > 0 && !currentSessionId) {
-        setCurrentSessionId(data[0].id); // default: latest session
+        setCurrentSessionId(data[0].id); // open latest session
       }
     }
   };
 
-  // ✅ Fetch messages for current session
+  // Fetch messages for current session
   useEffect(() => {
     const fetchMessages = async () => {
       if (!userId || !currentSessionId) return;
@@ -78,15 +96,18 @@ const ChatPage = () => {
     navigate("/");
   };
 
-  // ✅ Handle sending a message
+  // Send message
   const handleSend = async () => {
     if (!input.trim() || !userId || !currentSessionId) return;
+
+    const text = input.trim();
+    setInput("");
 
     const userMessage = {
       user_id: userId,
       session_id: currentSessionId,
       sender: "user",
-      text: input.trim(),
+      text,
     };
 
     const { data: savedUserMsg, error: userError } = await supabase
@@ -100,14 +121,16 @@ const ChatPage = () => {
     }
 
     setMessages((prev) => [...prev, savedUserMsg[0]]);
-    setInput("");
 
-    // ✅ Ask backend for AI reply
+    // Show typing animation immediately
+    setIsTyping(true);
+
+    // AI reply
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input.trim() }),
+        body: JSON.stringify({ message: text }),
       });
 
       const data = await res.json();
@@ -119,7 +142,21 @@ const ChatPage = () => {
         text: data.reply || "⚠️ Sorry, I couldn't generate a reply.",
       };
 
-      // Save AI reply in DB
+      // Hold AI reply until animation completes
+      pendingAiReply.current = aiMessage;
+    } catch (err) {
+      console.error("AI fetch error:", err);
+      setIsTyping(false);
+    }
+  };
+
+  // Handle animation complete → drop the AI message
+  const handleAnimationComplete = async () => {
+    setIsTyping(false);
+
+    if (pendingAiReply.current) {
+      const aiMessage = pendingAiReply.current;
+
       const { data: savedAiMsg, error: aiError } = await supabase
         .from("messages")
         .insert([aiMessage])
@@ -128,12 +165,12 @@ const ChatPage = () => {
       if (!aiError && savedAiMsg) {
         setMessages((prev) => [...prev, savedAiMsg[0]]);
       }
-    } catch (err) {
-      console.error("AI fetch error:", err);
+
+      pendingAiReply.current = null;
     }
   };
 
-  // ✅ Start new conversation
+  // New conversation
   const handleNewConversation = async () => {
     if (!userId) return;
 
@@ -163,49 +200,66 @@ const ChatPage = () => {
         setShowModal={setShowModal}
       />
 
-      {/* Main Chat Section */}
+      {/* Main Chat */}
       <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
-        {/* Chat Messages */}
-<div className="flex-1 p-6 overflow-y-auto space-y-4">
-  {messages.length === 0 ? (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-gray-500 text-center">
-        💬 No conversations yet. Start by sending a message!
-      </p>
-    </div>
-  ) : (
-    messages.map((msg, index) => (
-      <div
-        key={index}
-        className={`flex ${
-          msg.sender === "user" ? "justify-end" : "justify-start"
-        }`}
-      >
-        <div
-          className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
-            msg.sender === "user"
-              ? "bg-emerald-600 text-white"
-              : "bg-white text-gray-800 border border-emerald-200"
-          }`}
-        >
-          <span>{msg.text}</span>
-          <span
-            className={`text-xs mt-1 self-end ${
-              msg.sender === "user" ? "text-gray-300" : "text-gray-500"
-            }`}
-          >
-            {new Date(msg.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-      </div>
-    ))
-  )}
-</div>
+        {/* Messages */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-center">
+                💬 No conversations yet. Start by sending a message!
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
+                    msg.sender === "user"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white text-gray-800 border border-emerald-200"
+                  }`}
+                >
+                  <span>{msg.text}</span>
+                  <span
+                    className={`text-xs mt-1 self-end ${
+                      msg.sender === "user" ? "text-gray-300" : "text-gray-500"
+                    }`}
+                  >
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
 
-        {/* Input Box */}
+          {/* Typing Indicator (Lottie) */}
+{isTyping && (
+  <div className="flex justify-start">
+    <div className="flex items-center">
+      <Lottie
+        animationData={chatbotAnimation}
+        loop={false}
+        style={{ width: 68, height: 68 }}  // 🔹 smaller size
+        onComplete={handleAnimationComplete}
+      />
+    </div>
+  </div>
+)}
+
+          {/* Always here */}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
         <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
           <input
             type="text"
@@ -217,7 +271,8 @@ const ChatPage = () => {
           />
           <button
             onClick={handleSend}
-            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700"
+            disabled={!input.trim()}
+            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
           </button>
@@ -252,15 +307,16 @@ const ChatPage = () => {
         </div>
       )}
 
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
-            <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium">Logging out...</span>
-          </div>
-        </div>
-      )}
+      {/* Loading */}
+{loading && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
+      {/* Perfect size spinner */}
+      <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      <span className="text-gray-700 font-medium">Logging out...</span>
+    </div>
+  </div>
+)}
     </div>
   );
 };
