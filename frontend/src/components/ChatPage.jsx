@@ -2,31 +2,24 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Send } from "lucide-react";
-import Sidebar from "../components/Sidebar"; // <-- import Sidebar
+import Sidebar from "../components/Sidebar";
 
 const ChatPage = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Sidebar toggle
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Chat state
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
-
-  // Sessions state
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
 
-  // ✅ Fetch logged-in user
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
-        navigate("/"); // kick out if not logged in
+        navigate("/");
       } else {
         setUserId(data.user.id);
         fetchSessions(data.user.id);
@@ -35,39 +28,33 @@ const ChatPage = () => {
     getUser();
   }, [navigate]);
 
-  // ✅ Fetch all sessions for this user
   const fetchSessions = async (uid) => {
     const { data, error } = await supabase
       .from("sessions")
       .select("*")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
-
     if (!error && data) {
       setSessions(data);
       if (data.length > 0 && !currentSessionId) {
-        setCurrentSessionId(data[0].id); // default: latest session
+        setCurrentSessionId(data[0].id);
       }
     }
   };
 
-  // ✅ Fetch messages for current session
   useEffect(() => {
     const fetchMessages = async () => {
       if (!userId || !currentSessionId) return;
-
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("user_id", userId)
         .eq("session_id", currentSessionId)
         .order("created_at", { ascending: true });
-
       if (!error && data) {
         setMessages(data);
       }
     };
-
     fetchMessages();
   }, [userId, currentSessionId]);
 
@@ -78,7 +65,6 @@ const ChatPage = () => {
     navigate("/");
   };
 
-  // ✅ Handle sending a message
   const handleSend = async () => {
     if (!input.trim() || !userId || !currentSessionId) return;
 
@@ -102,6 +88,32 @@ const ChatPage = () => {
     setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
+    // ✅ Auto-generate ChatGPT-like session title if still Untitled
+    const session = sessions.find((s) => s.id === currentSessionId);
+    if (session && (!session.title || session.title === "Untitled")) {
+      try {
+        const titleRes = await fetch("/api/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessage.text }),
+        });
+        const { title } = await titleRes.json();
+        if (title) {
+          await supabase
+            .from("sessions")
+            .update({ title })
+            .eq("id", currentSessionId);
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === currentSessionId ? { ...s, title } : s
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Title generation failed:", err);
+      }
+    }
+
     // ✅ Ask backend for AI reply
     try {
       const res = await fetch("/api/chat", {
@@ -109,17 +121,15 @@ const ChatPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input.trim() }),
       });
-
       const data = await res.json();
 
       const aiMessage = {
         user_id: userId,
         session_id: currentSessionId,
         sender: "ai",
-        text: data.reply || "⚠️ Sorry, I couldn't generate a reply.",
+        text: data.reply || "⚠ Sorry, I couldn't generate a reply.",
       };
 
-      // Save AI reply in DB
       const { data: savedAiMsg, error: aiError } = await supabase
         .from("messages")
         .insert([aiMessage])
@@ -133,15 +143,12 @@ const ChatPage = () => {
     }
   };
 
-  // ✅ Start new conversation
   const handleNewConversation = async () => {
     if (!userId) return;
-
     const { data, error } = await supabase
       .from("sessions")
-      .insert([{ user_id: userId }])
+      .insert([{ user_id: userId, title: "Untitled" }])
       .select();
-
     if (!error && data.length > 0) {
       setCurrentSessionId(data[0].id);
       setMessages([]);
@@ -151,7 +158,6 @@ const ChatPage = () => {
 
   return (
     <div className="h-screen flex">
-      {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -161,51 +167,52 @@ const ChatPage = () => {
         handleNewConversation={handleNewConversation}
         handleLogout={handleLogout}
         setShowModal={setShowModal}
+        setSessions={setSessions}
       />
 
-      {/* Main Chat Section */}
+      {/* Chat UI unchanged */}
       <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
-        {/* Chat Messages */}
-<div className="flex-1 p-6 overflow-y-auto space-y-4">
-  {messages.length === 0 ? (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-gray-500 text-center">
-        💬 No conversations yet. Start by sending a message!
-      </p>
-    </div>
-  ) : (
-    messages.map((msg, index) => (
-      <div
-        key={index}
-        className={`flex ${
-          msg.sender === "user" ? "justify-end" : "justify-start"
-        }`}
-      >
-        <div
-          className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
-            msg.sender === "user"
-              ? "bg-emerald-600 text-white"
-              : "bg-white text-gray-800 border border-emerald-200"
-          }`}
-        >
-          <span>{msg.text}</span>
-          <span
-            className={`text-xs mt-1 self-end ${
-              msg.sender === "user" ? "text-gray-300" : "text-gray-500"
-            }`}
-          >
-            {new Date(msg.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
+        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-center">
+                💬 No conversations yet. Start by sending a message!
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
+                    msg.sender === "user"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white text-gray-800 border border-emerald-200"
+                  }`}
+                >
+                  <span>{msg.text}</span>
+                  <span
+                    className={`text-xs mt-1 self-end ${
+                      msg.sender === "user"
+                        ? "text-gray-300"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      </div>
-    ))
-  )}
-</div>
 
-        {/* Input Box */}
         <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
           <input
             type="text"
@@ -224,7 +231,7 @@ const ChatPage = () => {
         </div>
       </main>
 
-      {/* Logout Modal */}
+      {/* Logout Modal + Loading Overlay (unchanged) */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
@@ -252,7 +259,6 @@ const ChatPage = () => {
         </div>
       )}
 
-      {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
