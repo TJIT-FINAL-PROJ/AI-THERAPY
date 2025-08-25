@@ -1,21 +1,46 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Send } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import Lottie from "lottie-react";
+import chatbotAnimation from "../assets/chatbot.json"; // 👈 import your Lottie file
 
 const ChatPage = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Chat state
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
   const [user, setUser] = useState(null);
+
+  // Sessions
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
 
+  // Typing indicator state
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Store pending AI reply until animation finishes
+  const pendingAiReply = useRef(null);
+
+  // Dummy ref at the bottom of messages
+  const bottomRef = useRef(null);
+
+  // Always scroll to bottom whenever messages update
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, currentSessionId, isTyping]);
+
+  // Fetch logged-in user
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -30,33 +55,39 @@ const ChatPage = () => {
     getUser();
   }, [navigate]);
 
+  // Fetch all sessions
   const fetchSessions = async (uid) => {
     const { data, error } = await supabase
       .from("sessions")
       .select("*")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
+
     if (!error && data) {
       setSessions(data);
       if (data.length > 0 && !currentSessionId) {
-        setCurrentSessionId(data[0].id);
+        setCurrentSessionId(data[0].id); // open latest session
       }
     }
   };
 
+  // Fetch messages for current session
   useEffect(() => {
     const fetchMessages = async () => {
       if (!userId || !currentSessionId) return;
+
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("user_id", userId)
         .eq("session_id", currentSessionId)
         .order("created_at", { ascending: true });
+
       if (!error && data) {
         setMessages(data);
       }
     };
+
     fetchMessages();
   }, [userId, currentSessionId]);
 
@@ -67,14 +98,18 @@ const ChatPage = () => {
     navigate("/");
   };
 
+  // Send message
   const handleSend = async () => {
     if (!input.trim() || !userId || !currentSessionId) return;
+
+    const text = input.trim();
+    setInput("");
 
     const userMessage = {
       user_id: userId,
       session_id: currentSessionId,
       sender: "user",
-      text: input.trim(),
+      text,
     };
 
     const { data: savedUserMsg, error: userError } = await supabase
@@ -88,7 +123,6 @@ const ChatPage = () => {
     }
 
     setMessages((prev) => [...prev, savedUserMsg[0]]);
-    setInput("");
 
     // --- AUTO-RENAME LOGIC ---
     const session = sessions.find((s) => s.id === currentSessionId);
@@ -112,20 +146,40 @@ const ChatPage = () => {
     }
     // --------------------------
 
+    // Show typing animation immediately
+    setIsTyping(true);
+
+    // AI reply
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input.trim() }),
+        body: JSON.stringify({ message: text }),
       });
+
       const data = await res.json();
 
       const aiMessage = {
         user_id: userId,
         session_id: currentSessionId,
         sender: "ai",
-        text: data.reply || "⚠ Sorry, I couldn't generate a reply.",
+        text: data.reply || "⚠️ Sorry, I couldn't generate a reply.",
       };
+
+      // Hold AI reply until animation completes
+      pendingAiReply.current = aiMessage;
+    } catch (err) {
+      console.error("AI fetch error:", err);
+      setIsTyping(false);
+    }
+  };
+
+  // Handle animation complete → drop the AI message
+  const handleAnimationComplete = async () => {
+    setIsTyping(false);
+
+    if (pendingAiReply.current) {
+      const aiMessage = pendingAiReply.current;
 
       const { data: savedAiMsg, error: aiError } = await supabase
         .from("messages")
@@ -135,17 +189,20 @@ const ChatPage = () => {
       if (!aiError && savedAiMsg) {
         setMessages((prev) => [...prev, savedAiMsg[0]]);
       }
-    } catch (err) {
-      console.error("AI fetch error:", err);
+
+      pendingAiReply.current = null;
     }
   };
 
+  // New conversation
   const handleNewConversation = async () => {
     if (!userId) return;
+
     const { data, error } = await supabase
       .from("sessions")
       .insert([{ user_id: userId, title: "Untitled" }])
       .select();
+
     if (!error && data.length > 0) {
       setCurrentSessionId(data[0].id);
       setMessages([]);
@@ -155,6 +212,7 @@ const ChatPage = () => {
 
   return (
     <div className="h-screen flex">
+      {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -168,7 +226,9 @@ const ChatPage = () => {
         user={user}
       />
 
+      {/* Main Chat */}
       <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
+        {/* Messages */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -206,8 +266,26 @@ const ChatPage = () => {
               </div>
             ))
           )}
+
+          {/* Typing Indicator (Lottie) */}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="flex items-center">
+                <Lottie
+                  animationData={chatbotAnimation}
+                  loop={false}
+                  style={{ width: 68, height: 68 }} // 🔹 perfect size
+                  onComplete={handleAnimationComplete}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Always here */}
+          <div ref={bottomRef} />
         </div>
 
+        {/* Input */}
         <div className="p-4 border-t bg-emerald-50 flex items-center gap-2">
           <input
             type="text"
@@ -219,13 +297,15 @@ const ChatPage = () => {
           />
           <button
             onClick={handleSend}
-            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700"
+            disabled={!input.trim()}
+            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
       </main>
 
+      {/* Logout Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
@@ -253,9 +333,11 @@ const ChatPage = () => {
         </div>
       )}
 
+      {/* Loading */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
+            {/* Perfect size spinner */}
             <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-gray-700 font-medium">Logging out...</span>
           </div>
