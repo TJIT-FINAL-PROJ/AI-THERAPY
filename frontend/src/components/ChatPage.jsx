@@ -176,7 +176,7 @@ const ChatPage = () => {
 
     const { data, error } = await supabase
       .from("sessions")
-      .insert([{ user_id: userId }])
+      .insert([{ user_id: userId, title: "Untitled" }])
       .select();
 
     if (!error && data.length > 0) {
@@ -198,6 +198,7 @@ const ChatPage = () => {
         handleNewConversation={handleNewConversation}
         handleLogout={handleLogout}
         setShowModal={setShowModal}
+        setSessions={setSessions}
       />
 
       {/* Main Chat */}
@@ -242,18 +243,18 @@ const ChatPage = () => {
           )}
 
           {/* Typing Indicator (Lottie) */}
-{isTyping && (
-  <div className="flex justify-start">
-    <div className="flex items-center">
-      <Lottie
-        animationData={chatbotAnimation}
-        loop={false}
-        style={{ width: 68, height: 68 }}  // 🔹 smaller size
-        onComplete={handleAnimationComplete}
-      />
-    </div>
-  </div>
-)}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="flex items-center">
+                <Lottie
+                  animationData={chatbotAnimation}
+                  loop={false}
+                  style={{ width: 68, height: 68 }} // 🔹 perfect size
+                  onComplete={handleAnimationComplete}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Always here */}
           <div ref={bottomRef} />
@@ -308,15 +309,15 @@ const ChatPage = () => {
       )}
 
       {/* Loading */}
-{loading && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
-      {/* Perfect size spinner */}
-      <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-      <span className="text-gray-700 font-medium">Logging out...</span>
-    </div>
-  </div>
-)}
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
+            {/* Perfect size spinner */}
+            <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-gray-700 font-medium">Logging out...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
