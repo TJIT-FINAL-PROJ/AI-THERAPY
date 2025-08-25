@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   User,
@@ -8,6 +8,7 @@ import {
   Settings,
   Plus,
   MoreVertical,
+  Mail,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
@@ -20,11 +21,39 @@ const Sidebar = ({
   handleNewConversation,
   setShowModal,
   setSessions,
+  handleLogout,
 }) => {
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
+
+  const [user, setUser] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const getUserInfo = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser({
+          name: data.user.user_metadata?.full_name || "User",
+          email: data.user.email,
+        });
+      }
+    };
+    getUserInfo();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const groupSessions = (sessions) => {
     const today = new Date();
@@ -32,25 +61,18 @@ const Sidebar = ({
     yesterday.setDate(yesterday.getDate() - 1);
     const groups = { Today: [], Yesterday: [], Older: [] };
     sessions.forEach((s) => {
-      const date = new Date(s.created_at);
-      if (date.toDateString() === today.toDateString()) {
-        groups.Today.push(s);
-      } else if (date.toDateString() === yesterday.toDateString()) {
-        groups.Yesterday.push(s);
-      } else {
-        groups.Older.push(s);
-      }
+      const d = new Date(s.created_at);
+      if (d.toDateString() === today.toDateString()) groups.Today.push(s);
+      else if (d.toDateString() === yesterday.toDateString()) groups.Yesterday.push(s);
+      else groups.Older.push(s);
     });
     return groups;
   };
 
   const handleDelete = async (id) => {
     try {
-      // delete related messages first
       await supabase.from("messages").delete().eq("session_id", id);
-      // then delete session
       await supabase.from("sessions").delete().eq("id", id);
-
       setSessions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       console.error("Error deleting session:", err);
@@ -59,19 +81,12 @@ const Sidebar = ({
 
   const handleRename = async (id) => {
     if (!editTitle.trim()) return;
-
     try {
-      await supabase
-        .from("sessions")
-        .update({ title: editTitle.trim() })
-        .eq("id", id);
-
+      await supabase.from("sessions").update({ title: editTitle.trim() }).eq("id", id);
       setEditingId(null);
       setEditTitle("");
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === id ? { ...s, title: editTitle.trim() } : s
-        )
+        prev.map((s) => (s.id === id ? { ...s, title: editTitle.trim() } : s))
       );
     } catch (err) {
       console.error("Error renaming session:", err);
@@ -92,10 +107,7 @@ const Sidebar = ({
                 Therapy Chat
               </h1>
             )}
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="rounded-lg hover:bg-emerald-800"
-            >
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="rounded-lg hover:bg-emerald-800">
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
@@ -108,7 +120,6 @@ const Sidebar = ({
               >
                 <Plus className="w-5 h-5" /> New Conversation
               </button>
-
               <div className="space-y-4 overflow-y-auto">
                 {Object.entries(groupSessions(sessions)).map(([label, items]) =>
                   items.length > 0 ? (
@@ -116,14 +127,12 @@ const Sidebar = ({
                       <h3 className="text-sm font-semibold text-gray-300 px-2 mb-1">
                         {label}
                       </h3>
-                      <div className="space-y-1">
+                      <div className="space-y-1 relative">
                         {items.map((s) => (
                           <div
                             key={s.id}
                             className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer relative ${
-                              currentSessionId === s.id
-                                ? "bg-emerald-500 text-white"
-                                : "hover:bg-emerald-800"
+                              currentSessionId === s.id ? "bg-emerald-500 text-white" : "hover:bg-emerald-800"
                             }`}
                             onClick={() => setCurrentSessionId(s.id)}
                           >
@@ -151,31 +160,25 @@ const Sidebar = ({
                                     {s.title || "Untitled"}
                                   </span>
                                   <span className="text-xs text-gray-300">
-                                    {new Date(s.created_at).toLocaleTimeString(
-                                      [],
-                                      { hour: "2-digit", minute: "2-digit" }
-                                    )}
+                                    {new Date(s.created_at).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
                                   </span>
                                 </>
                               )}
                             </div>
-
-                            {/* Three Dots Menu */}
-                            <div
-                              className="relative ml-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className="relative ml-2">
                               <MoreVertical
                                 size={18}
                                 className="cursor-pointer hover:text-emerald-300"
-                                onClick={() =>
-                                  setMenuOpenId(
-                                    menuOpenId === s.id ? null : s.id
-                                  )
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenId(menuOpenId === s.id ? null : s.id);
+                                }}
                               />
                               {menuOpenId === s.id && (
-                                <div className="absolute left-full top-0 ml-2 bg-white text-gray-800 rounded-lg shadow-lg z-50 w-32">
+                                <div className="fixed z-50 bg-white text-gray-800 rounded-lg shadow-lg w-32 p-1 border border-gray-200">
                                   <button
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100"
                                     onClick={() => {
@@ -207,34 +210,41 @@ const Sidebar = ({
               </div>
             </div>
           )}
-
-          <nav className="mt-6 space-y-2">
-            {isSidebarOpen && (
-              <Link
-                to="/settings"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
-              >
-                <Settings className="w-5 h-5" /> <span>Settings</span>
-              </Link>
-            )}
-          </nav>
         </div>
 
-        <div className="mb-4 space-y-2">
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-800 rounded-lg"
+        {/* USER DROPDOWN */}
+        <div className="relative mb-4 px-4" ref={dropdownRef}>
+          <button
+            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-emerald-800 w-full"
+            onClick={() => setDropdownOpen((prev) => !prev)}
           >
             <User className="w-5 h-5" />
-            {isSidebarOpen && <span>Profile</span>}
-          </Link>
-          <button
-            onClick={() => setShowModal(true)}
-            className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-600 rounded-lg text-left"
-          >
-            <LogOut className="w-5 h-5" />
-            {isSidebarOpen && <span>Logout</span>}
+            {isSidebarOpen && <span>{user?.name || "User"}</span>}
           </button>
+
+          {dropdownOpen && (
+            <div className="absolute bottom-12 left-0 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 divide-y">
+              <div className="flex items-center gap-2 px-4 py-2 text-sm">
+                <Mail className="w-4 h-4 text-gray-500" />
+                <span>{user?.email || "No email"}</span>
+              </div>
+              <Link to="/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100">
+                <Settings className="w-4 h-4 text-gray-600" />
+                Settings
+              </Link>
+              <Link to="/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100">
+                <User className="w-4 h-4 text-gray-600" />
+                Profile
+              </Link>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -247,10 +257,8 @@ const Sidebar = ({
             </h2>
             <p className="text-sm text-gray-600 mb-6">
               This will delete{" "}
-              <span className="font-medium">
-                {deleteModal.title || "Untitled"}
-              </span>
-              . Visit settings to delete any memory saved during this chat.
+              <span className="font-medium">{deleteModal.title || "Untitled"}</span>.
+              Visit settings to delete any memory saved during this chat.
             </p>
             <div className="flex justify-end gap-3">
               <button

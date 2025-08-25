@@ -12,6 +12,7 @@ const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
+  const [user, setUser] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
 
@@ -22,6 +23,7 @@ const ChatPage = () => {
         navigate("/");
       } else {
         setUserId(data.user.id);
+        setUser(data.user);
         fetchSessions(data.user.id);
       }
     };
@@ -88,7 +90,7 @@ const ChatPage = () => {
     setMessages((prev) => [...prev, savedUserMsg[0]]);
     setInput("");
 
-    // ✅ Auto-generate ChatGPT-like session title if still Untitled
+    // --- AUTO-RENAME LOGIC ---
     const session = sessions.find((s) => s.id === currentSessionId);
     if (session && (!session.title || session.title === "Untitled")) {
       try {
@@ -99,22 +101,17 @@ const ChatPage = () => {
         });
         const { title } = await titleRes.json();
         if (title) {
-          await supabase
-            .from("sessions")
-            .update({ title })
-            .eq("id", currentSessionId);
+          await supabase.from("sessions").update({ title }).eq("id", currentSessionId);
           setSessions((prev) =>
-            prev.map((s) =>
-              s.id === currentSessionId ? { ...s, title } : s
-            )
+            prev.map((s) => (s.id === currentSessionId ? { ...s, title } : s))
           );
         }
       } catch (err) {
         console.error("Title generation failed:", err);
       }
     }
+    // --------------------------
 
-    // ✅ Ask backend for AI reply
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -168,9 +165,9 @@ const ChatPage = () => {
         handleLogout={handleLogout}
         setShowModal={setShowModal}
         setSessions={setSessions}
+        user={user}
       />
 
-      {/* Chat UI unchanged */}
       <main className="flex-1 flex flex-col bg-gradient-to-br from-green-50 via-emerald-100 to-green-200">
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.length === 0 ? (
@@ -197,9 +194,7 @@ const ChatPage = () => {
                   <span>{msg.text}</span>
                   <span
                     className={`text-xs mt-1 self-end ${
-                      msg.sender === "user"
-                        ? "text-gray-300"
-                        : "text-gray-500"
+                      msg.sender === "user" ? "text-gray-300" : "text-gray-500"
                     }`}
                   >
                     {new Date(msg.created_at).toLocaleTimeString([], {
@@ -231,7 +226,6 @@ const ChatPage = () => {
         </div>
       </main>
 
-      {/* Logout Modal + Loading Overlay (unchanged) */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
