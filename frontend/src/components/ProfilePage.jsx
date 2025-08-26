@@ -31,6 +31,7 @@ const avatarOptions = [
 const ProfilePage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({
     full_name: "",
     email: "",
@@ -42,56 +43,72 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [avatarEditing, setAvatarEditing] = useState(false);
 
-  // Load user session
+  // Load user first
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) {
+      if (!error && data?.user) {
         setUser(data.user);
         setProfile((prev) => ({
           ...prev,
-          full_name: data.user.user_metadata?.full_name || data.user.email.split("@")[0],
+          full_name:
+            data.user.user_metadata?.full_name ||
+            data.user.email.split("@")[0],
           email: data.user.email,
         }));
+      } else {
+        setLoading(false);
       }
     };
     getUser();
   }, []);
 
-  // Fetch profile + onboarding
+  // Fetch profile + onboarding once we have user
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const getProfile = async () => {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      try {
+        // Profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
 
-      if (profileData) {
-        setProfile((prev) => ({
-          ...prev,
-          gender: profileData.gender || "",
-          date_of_birth: profileData.date_of_birth || "",
-          avatar_url: profileData.avatar_url || avatarOptions[0],
-        }));
-      }
+        if (profileError && profileError.code !== "PGRST116") {
+          console.error(profileError);
+        }
 
-      const { data: onboardingData } = await supabase
-        .from("onboarding")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        if (profileData) {
+          setProfile((prev) => ({
+            ...prev,
+            gender: profileData.gender || "",
+            date_of_birth: profileData.date_of_birth || "",
+            avatar_url: profileData.avatar_url || avatarOptions[0],
+          }));
+        }
 
-      if (onboardingData?.length > 0) {
-        const latest = onboardingData[0];
-        setOnboarding({
-          id: latest.id,
-          mood: latest.answers?.mood || "",
-          goal: latest.answers?.goal || "",
-        });
+        // Onboarding table
+        const { data: onboardingData } = await supabase
+          .from("onboarding")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (onboardingData?.length > 0) {
+          const latest = onboardingData[0];
+          setOnboarding({
+            id: latest.id,
+            mood: latest.answers?.mood || "",
+            goal: latest.answers?.goal || "",
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -100,17 +117,18 @@ const ProfilePage = () => {
 
   // Save updates
   const handleSave = async () => {
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        gender: profile.gender,
-        date_of_birth: profile.date_of_birth,
-        avatar_url: profile.avatar_url,
-        updated_at: new Date(),
-      })
-      .eq("id", user.id);
+    if (!user?.id) return;
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      gender: profile.gender,
+      date_of_birth: profile.date_of_birth,
+      avatar_url: profile.avatar_url,
+      updated_at: new Date().toISOString(),
+    });
 
     if (profileError) {
+      console.error(profileError);
       toast.error("Failed to update profile.");
       return;
     }
@@ -126,6 +144,7 @@ const ProfilePage = () => {
       );
 
     if (onboardingError) {
+      console.error(onboardingError);
       toast.error("Failed to update mood & goal.");
       return;
     }
@@ -135,16 +154,24 @@ const ProfilePage = () => {
     setAvatarEditing(false);
   };
 
+  // Loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200">
+        <p className="text-emerald-700 font-medium text-lg">Loading profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center p-6">
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl px-8 pt-24 relative grid grid-cols-2 gap-8 min-h-[65vh]">
-        
         {/* Title */}
         <h2 className="absolute top-6 left-1/2 transform -translate-x-1/2 text-3xl font-bold text-emerald-700">
           Profile Details
         </h2>
 
-        {/* Back button (only when NOT editing) */}
+        {/* Back button */}
         {!isEditing && (
           <button
             onClick={() => navigate("/chat")}
@@ -154,7 +181,7 @@ const ProfilePage = () => {
           </button>
         )}
 
-        {/* Edit button (top-right, only when NOT editing) */}
+        {/* Edit button */}
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
@@ -180,7 +207,6 @@ const ProfilePage = () => {
             </button>
           )}
 
-          {/* Avatar Picker */}
           {isEditing && avatarEditing && (
             <div className="mt-5 grid grid-cols-4 gap-2">
               {avatarOptions.map((url, idx) => (
@@ -230,7 +256,9 @@ const ProfilePage = () => {
             {isEditing ? (
               <select
                 value={profile.gender}
-                onChange={(e) => setProfile({ ...profile, gender: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, gender: e.target.value })
+                }
                 className="w-full border p-2 rounded bg-white border-emerald-400"
               >
                 <option value="">Select gender</option>

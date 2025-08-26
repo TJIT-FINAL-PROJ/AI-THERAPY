@@ -21,7 +21,6 @@ const Sidebar = ({
   handleNewConversation,
   setShowModal,
   setSessions,
-  handleLogout,
 }) => {
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
