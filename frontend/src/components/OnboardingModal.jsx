@@ -1,54 +1,83 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const OnboardingModal = ({ onComplete }) => {
   const [mood, setMood] = useState("");
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ✅ Fetch saved onboarding data on mount (pre-fill)
+  useEffect(() => {
+    const fetchOnboarding = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) return;
+
+        const { data, error } = await supabase
+          .from("onboarding")
+          .select("answers")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) return; // no onboarding yet
+
+        if (data?.answers) {
+          setMood(data.answers.mood || "");
+          setGoal(data.answers.goal || "");
+        }
+      } catch (err) {
+        console.error("Error fetching onboarding:", err.message);
+      }
+    };
+
+    fetchOnboarding();
+  }, []);
+
   const handleSave = async () => {
-    if (!mood || !goal) return alert("Please fill both fields ✍️");
+    if (!mood || !goal) {
+      toast.error("Please fill in both Mood and Goal ✍️");
+      return;
+    }
+
     setLoading(true);
 
-    // ✅ Step 1: update metadata (your existing logic)
-    const { data: updatedUser, error } = await supabase.auth.updateUser({
-      data: { mood, goal },
-    });
-
-    if (error) {
-      console.error("Error updating metadata:", error.message);
-      alert("Something went wrong. Try again.");
-      setLoading(false);
-      return;
-    }
-
-    // ✅ Step 2: also insert into onboarding table
     try {
-      const userId = updatedUser?.user?.id; // get user ID
-      if (!userId) throw new Error("User not found after update");
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("User not found.");
 
-      const { error: insertError } = await supabase
-        .from("onboarding")
-        .upsert(
-          {
-            user_id: userId,
-            answers: { mood, goal }, // keep JSON format
-          },
-          { onConflict: "user_id" } // makes sure 1 row per user
-        );
+      // ✅ Update user metadata (optional but nice)
+      const { error: metaError } = await supabase.auth.updateUser({
+        data: { mood, goal },
+      });
+      if (metaError) throw metaError;
 
-      if (insertError) throw insertError;
+      // ✅ Save onboarding JSON
+      const { error: dbError } = await supabase.from("onboarding").upsert(
+        {
+          user_id: user.id,
+          answers: { mood, goal },
+        },
+        { onConflict: "user_id" }
+      );
+      if (dbError) throw dbError;
+
+      toast.success(`Saved! 🎉 Mood: ${mood}, Goal: ${goal}`);
+      setTimeout(() => onComplete?.(), 1000);
     } catch (err) {
-      console.error("Error saving onboarding:", err.message);
-      alert("Something went wrong while saving onboarding.");
+      console.error("Save error:", err.message);
+      toast.error("Failed to save. Try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setLoading(false);
-
-    // ✅ tell parent that onboarding is complete
-    onComplete();
   };
 
   return (
@@ -84,6 +113,8 @@ const OnboardingModal = ({ onComplete }) => {
           {loading ? "Saving..." : "Save & Continue"}
         </button>
       </div>
+
+      <ToastContainer position="bottom-right" autoClose={2500} />
     </div>
   );
 };

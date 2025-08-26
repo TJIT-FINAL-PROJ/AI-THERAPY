@@ -1,3 +1,4 @@
+// src/pages/AuthPage.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
@@ -18,6 +19,7 @@ const AuthPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     if (mode === "signup") setIsLogin(false);
@@ -25,10 +27,23 @@ const AuthPage = () => {
 
     const checkSession = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data?.user) setCurrentUser(data.user);
+      if (data?.user) {
+        setCurrentUser(data.user);
+        await fetchProfile(data.user.id);
+      }
     };
     checkSession();
   }, [mode]);
+
+  // ✅ Fetch profile from profiles table
+  const fetchProfile = async (userId) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    if (!error) setProfile(data);
+  };
 
   // ✅ Login/Signup
   const handleSubmit = async (e) => {
@@ -45,8 +60,9 @@ const AuthPage = () => {
         if (error) return setMessage(error.message);
 
         setCurrentUser(data.user);
+        await fetchProfile(data.user.id);
 
-        if (!data.user?.user_metadata?.mood || !data.user?.user_metadata?.goal) {
+        if (!profile?.mood || !profile?.goal) {
           setShowOnboarding(true);
         } else {
           navigate("/chat");
@@ -57,7 +73,7 @@ const AuthPage = () => {
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            data: { full_name: fullName }, // goes into auth metadata first
           },
         });
         if (error) return setMessage(error.message);
@@ -73,8 +89,9 @@ const AuthPage = () => {
           if (loginError) return setMessage(loginError.message);
 
           setCurrentUser(loginData.user);
+          await fetchProfile(loginData.user.id);
 
-          if (!loginData.user?.user_metadata?.mood || !loginData.user?.user_metadata?.goal) {
+          if (!profile?.mood || !profile?.goal) {
             setShowOnboarding(true);
           } else {
             navigate("/chat");
@@ -121,7 +138,8 @@ const AuthPage = () => {
     if (error) setMessage(error.message);
     else {
       setCurrentUser(data.user);
-      if (!data.user?.user_metadata?.mood || !data.user?.user_metadata?.goal) {
+      await fetchProfile(data.user.id);
+      if (!profile?.mood || !profile?.goal) {
         setShowOnboarding(true);
       } else {
         navigate("/chat");
@@ -133,12 +151,13 @@ const AuthPage = () => {
     if (
       window.confirm(
         `Are you sure you want to log out, ${
-          currentUser?.user_metadata?.full_name || "User"
+          profile?.full_name || currentUser?.email || "User"
         }?`
       )
     ) {
       await supabase.auth.signOut();
       setCurrentUser(null);
+      setProfile(null);
       navigate("/");
     }
   };
@@ -151,7 +170,7 @@ const AuthPage = () => {
           {currentUser ? (
             <div className="text-center space-y-6">
               <h1 className="text-2xl font-bold text-emerald-600">
-                Hello, {currentUser.user_metadata?.full_name || "User"} 👋
+                Hello, {profile?.full_name || "User"} 👋
               </h1>
               <p className="text-gray-600">{currentUser.email}</p>
               <button
