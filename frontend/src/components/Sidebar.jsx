@@ -27,7 +27,6 @@ const Sidebar = ({
   const [deleteModal, setDeleteModal] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
-
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -226,7 +225,9 @@ const Sidebar = ({
             <div className="absolute bottom-12 left-0 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 divide-y">
               <div className="flex items-center gap-2 px-4 py-2 text-sm">
                 <Mail className="w-4 h-4 text-gray-500" />
-                <span>{user?.email || "No email"}</span>
+                <span className="truncate max-w-[150px]" title={user?.email}>
+                  {user?.email || "No email"}
+                </span>
               </div>
               <Link to="/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100">
                 <Settings className="w-4 h-4 text-gray-600" />

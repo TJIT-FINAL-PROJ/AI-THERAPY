@@ -6,6 +6,16 @@ import Sidebar from "../components/Sidebar";
 import Lottie from "lottie-react";
 import chatbotAnimation from "../assets/chatbot.json"; // 👈 import your Lottie file
 
+// Helper: keyword-based title generator
+const generateTitleFromMessages = (messages) => {
+  const text = messages.map((m) => m.text.toLowerCase()).join(" ");
+  if (text.includes("peace")) return "Peace";
+  if (text.includes("happy") || text.includes("joy")) return "Happiness";
+  if (text.includes("sad") || text.includes("depress")) return "Sadness";
+  if (text.includes("angry") || text.includes("mad")) return "Anger";
+  return "Conversation";
+};
+
 const ChatPage = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
@@ -91,6 +101,29 @@ const ChatPage = () => {
     fetchMessages();
   }, [userId, currentSessionId]);
 
+  // Auto-title watcher
+  useEffect(() => {
+    if (!currentSessionId || messages.length < 3) return;
+
+    const session = sessions.find((s) => s.id === currentSessionId);
+    if (session && session.title === "Untitled") {
+      const newTitle = generateTitleFromMessages(messages);
+
+      supabase
+        .from("sessions")
+        .update({ title: newTitle })
+        .eq("id", currentSessionId)
+        .then(() => {
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === currentSessionId ? { ...s, title: newTitle } : s
+            )
+          );
+        })
+        .catch((err) => console.error("Auto-title update failed:", err));
+    }
+  }, [messages, currentSessionId, sessions]);
+
   const handleLogout = async () => {
     setLoading(true);
     await supabase.auth.signOut();
@@ -124,7 +157,7 @@ const ChatPage = () => {
 
     setMessages((prev) => [...prev, savedUserMsg[0]]);
 
-    // --- AUTO-RENAME LOGIC ---
+    // --- EXISTING API TITLE LOGIC (unchanged) ---
     const session = sessions.find((s) => s.id === currentSessionId);
     if (session && (!session.title || session.title === "Untitled")) {
       try {
@@ -337,7 +370,6 @@ const ChatPage = () => {
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
-            {/* Perfect size spinner */}
             <div className="w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-gray-700 font-medium">Logging out...</span>
           </div>
