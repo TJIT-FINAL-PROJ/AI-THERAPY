@@ -17,4 +17,18 @@ html, body, #root {
   p {
     @apply text-base md:text-lg;
   }
+
+html, body, * {
+  cursor: default;
+  caret-color: transparent;
+}
+
+/* Keep pointer for clickable things */
+a, button, [role="button"], input[type="submit"], input[type="button"] {
+  cursor: pointer;
+}
+input,
+textarea {
+  caret-color: auto;
+}
 }

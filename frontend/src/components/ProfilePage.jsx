@@ -175,7 +175,7 @@ const ProfilePage = () => {
         {!isEditing && (
           <button
             onClick={() => navigate("/chat")}
-            className="absolute top-6 left-6 text-emerald-600 font-medium hover:underline"
+            className="absolute top-6 left-6 text-emerald-600 font-medium hover:underline "
           >
             ← Back
           </button>
