@@ -143,7 +143,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
-        <p className="text-emerald-700 font-medium text-lg">Loading profile...</p>
+        <p className="text-pink-700 font-medium text-lg">Loading profile...</p>
       </div>
     );
   }
