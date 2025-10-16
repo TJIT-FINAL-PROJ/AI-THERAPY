@@ -163,13 +163,15 @@ const AuthPage = () => {
   };
 
   return (
-    <section className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-green-50 via-white to-green-100">
-      {showOnboarding && <OnboardingModal onComplete={() => navigate("/chat")} />}
+    <section className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
+      {showOnboarding && (
+        <OnboardingModal onComplete={() => navigate("/chat")} />
+      )}
       {!showOnboarding && (
         <div className="bg-white shadow-xl rounded-2xl p-8 w-[90%] max-w-md border border-gray-100">
           {currentUser ? (
             <div className="text-center space-y-6">
-              <h1 className="text-2xl font-bold text-emerald-600">
+              <h1 className="text-2xl font-bold text-pink-700">
                 Hello, {profile?.full_name || "User"} 👋
               </h1>
               <p className="text-gray-600">{currentUser.email}</p>
@@ -182,7 +184,7 @@ const AuthPage = () => {
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-extrabold mb-6 text-center text-emerald-600 tracking-tight">
+              <h1 className="text-3xl font-extrabold mb-6 text-center text-pink-700 tracking-tight">
                 {isLogin ? "Welcome Back!" : "Create Your Account"}
               </h1>
               <p className="text-center text-gray-500 mb-6 text-sm">
@@ -228,21 +230,22 @@ const AuthPage = () => {
                     />
                     <button
                       type="submit"
-                      className="w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold hover:bg-emerald-600"
+                      className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700"
                     >
                       {isLogin ? "Login" : "Sign Up"}
                     </button>
                   </form>
+
                   <div className="mt-6 space-y-3">
                     <button
                       onClick={handleGoogleLogin}
-                      className="w-full bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600"
+                      className="w-full bg-rose-500 text-white py-2 rounded-lg font-medium hover:bg-rose-600"
                     >
                       Continue with Google
                     </button>
                     <button
                       onClick={handleOtpLogin}
-                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600"
+                      className="w-full bg-pink-100 text-pink-700 py-2 rounded-lg font-medium hover:bg-pink-200"
                     >
                       Login via OTP
                     </button>
@@ -261,7 +264,7 @@ const AuthPage = () => {
                   />
                   <button
                     onClick={handleOtpVerify}
-                    className="w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold hover:bg-emerald-600"
+                    className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700"
                   >
                     Verify OTP
                   </button>
@@ -270,7 +273,7 @@ const AuthPage = () => {
                       setOtpSent(false);
                       setOtpCode("");
                     }}
-                    className="w-full bg-gray-300 text-gray-800 py-2 rounded-lg font-medium hover:bg-gray-400"
+                    className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300"
                   >
                     ← Back
                   </button>
@@ -281,7 +284,7 @@ const AuthPage = () => {
                 {isLogin ? "Don’t have an account?" : "Already have an account?"}{" "}
                 <button
                   onClick={() => setIsLogin(!isLogin)}
-                  className="text-emerald-600 font-medium hover:underline"
+                  className="text-pink-700 font-medium hover:underline"
                 >
                   {isLogin ? "Sign Up" : "Login"}
                 </button>
@@ -290,7 +293,7 @@ const AuthPage = () => {
               <div className="mt-4 text-center">
                 <Link
                   to="/"
-                  className="text-emerald-600 font-medium hover:underline"
+                  className="text-pink-700 font-medium hover:underline"
                 >
                   ← Back to Home
                 </Link>

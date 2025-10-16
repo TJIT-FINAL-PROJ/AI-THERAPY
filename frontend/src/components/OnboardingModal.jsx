@@ -52,6 +52,7 @@ const OnboardingModal = ({ onComplete }) => {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
+
       if (userError || !user) throw new Error("User not found.");
 
       // ✅ Update user metadata (optional but nice)
@@ -83,7 +84,7 @@ const OnboardingModal = ({ onComplete }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 w-[90%] max-w-md shadow-xl">
-        <h2 className="text-xl font-bold mb-4 text-emerald-600">Quick Setup</h2>
+        <h2 className="text-xl font-bold mb-4 text-pink-700">Quick Setup</h2>
         <p className="mb-4 text-gray-600">
           Just a few quick questions to personalize your chat experience:
         </p>
@@ -108,7 +109,7 @@ const OnboardingModal = ({ onComplete }) => {
         <button
           onClick={handleSave}
           disabled={loading}
-          className="mt-5 w-full bg-emerald-500 text-white py-2 rounded-lg font-semibold hover:bg-emerald-600 disabled:opacity-50"
+          className="mt-5 w-full bg-pink-600 text-white py-2 rounded-lg font-semibold hover:bg-pink-700 disabled:opacity-50"
         >
           {loading ? "Saving..." : "Save & Continue"}
         </button>
