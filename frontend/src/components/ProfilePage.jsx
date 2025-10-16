@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { toast, ToastContainer } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import "react-toastify/dist/ReactToastify.css";
 
 // --- avatars ---
@@ -27,7 +28,6 @@ import ProfileBio from "./profile/ProfileBio";
 import SystemSettings from "./profile/SystemSettings";
 import MoodSettings from "./profile/MoodSettings";
 import SecurityAccount from "./profile/SecurityAccount";
-
 
 const avatarOptions = [
   avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7, avatar8,
@@ -169,7 +169,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
-        <p className="text-pink-700 font-medium text-lg">Loading profile...</p>
+        <p className="text-pink-700 font-medium text-lg animate-pulse">Loading profile...</p>
       </div>
     );
   }
@@ -184,14 +184,19 @@ const ProfilePage = () => {
           ← Back
         </button>
 
-        <h2 className="absolute top-6 left-1/2 transform -translate-x-1/2 text-3xl font-bold text-pink-700">
+        <motion.h2
+          className="absolute top-6 left-1/2 transform -translate-x-1/2 text-3xl font-bold text-pink-700"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           My Profile
-        </h2>
+        </motion.h2>
 
         {/* LEFT MENU */}
         <div className="col-span-1 border-r border-gray-200 pt-6 space-y-2 bg-rose-50 rounded-l-2xl p-4">
           {["Bio", "System Settings", "Mood Settings", "Security & Account"].map((tab) => (
-            <button
+            <motion.button
               key={tab}
               onClick={() => {
                 setActiveSection(tab);
@@ -203,38 +208,76 @@ const ProfilePage = () => {
                   ? "bg-pink-100 text-pink-700"
                   : "hover:bg-gray-50 text-gray-700"
               }`}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
               {tab}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {/* RIGHT CONTENT */}
         <div className="col-span-4 overflow-y-auto">
-          {activeSection === "Bio" && (
-            <ProfileBio
-              profile={profile}
-              setProfile={setProfile}
-              onboarding={onboarding}
-              setOnboarding={setOnboarding}
-              isEditing={isEditing}
-              setIsEditing={setIsEditing}
-              avatarEditing={avatarEditing}
-              setAvatarEditing={setAvatarEditing}
-              avatarOptions={avatarOptions}
-              handleSave={handleSave}
-            />
-          )}
+          <AnimatePresence exitBeforeEnter>
+            {activeSection === "Bio" && (
+              <motion.div
+                key="bio"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ProfileBio
+                  profile={profile}
+                  setProfile={setProfile}
+                  onboarding={onboarding}
+                  setOnboarding={setOnboarding}
+                  isEditing={isEditing}
+                  setIsEditing={setIsEditing}
+                  avatarEditing={avatarEditing}
+                  setAvatarEditing={setAvatarEditing}
+                  avatarOptions={avatarOptions}
+                  handleSave={handleSave}
+                />
+              </motion.div>
+            )}
 
-          {activeSection === "System Settings" && (
-            <SystemSettings preferences={preferences} setPreferences={setPreferences} />
-          )}
+            {activeSection === "System Settings" && (
+              <motion.div
+                key="system"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <SystemSettings preferences={preferences} setPreferences={setPreferences} />
+              </motion.div>
+            )}
 
-          {activeSection === "Mood Settings" && <MoodSettings moodData={moodData} />}
+            {activeSection === "Mood Settings" && (
+              <motion.div
+                key="mood"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <MoodSettings moodData={moodData} />
+              </motion.div>
+            )}
 
-          {activeSection === "Security & Account" && (
-            <SecurityAccount profile={profile} />
-          )}
+            {activeSection === "Security & Account" && (
+              <motion.div
+                key="security"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <SecurityAccount profile={profile} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <ToastContainer position="top-center" autoClose={3000} />
