@@ -11,7 +11,6 @@ import {
   Mail,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import defaultChatbotAvatar from "../assets/avatars/avatar1.png";
 
 const Sidebar = ({
   isSidebarOpen,
@@ -238,14 +237,13 @@ const Sidebar = ({
               }`}
             >
               <img
-                src={avatarUrl || defaultChatbotAvatar}
-                alt="User Avatar"
-                className="object-cover w-full h-full rounded-2xl border-2 border-white"
+                src={avatarUrl}
+                className="w-full h-full rounded-2xl border-white"
               />
             </div>
             {isSidebarOpen && (
               <span className="text-sm font-medium truncate">
-                {user?.full_name || "User"}
+                {user?.full_name}
               </span>
             )}
           </button>
