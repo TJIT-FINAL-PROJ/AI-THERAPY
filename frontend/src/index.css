@@ -2,12 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
-  height: 100%;
-}
 @layer base {
+  html {
+    @apply h-full;
+  }
+
   body {
-    @apply text-gray-800 bg-white max-w-[1536px] mx-auto;
+    @apply h-full max-w-[1536px] mx-auto transition-colors duration-300
+      bg-white text-gray-800
+      dark:bg-gray-900 dark:text-gray-100;
   }
 
   h1 {
@@ -18,17 +21,18 @@ html, body, #root {
     @apply text-base md:text-lg;
   }
 
-html, body, * {
-  cursor: default;
-  caret-color: transparent;
-}
+  /* Common pointer/caret settings */
+  *, html, body {
+    cursor: default;
+    caret-color: transparent;
+  }
 
-/* Keep pointer for clickable things */
-a, button, [role="button"], input[type="submit"], input[type="button"] {
-  cursor: pointer;
-}
-input,
-textarea {
-  caret-color: auto;
-}
+  a, button, [role="button"], input[type="submit"], input[type="button"] {
+    cursor: pointer;
+  }
+
+  input,
+  textarea {
+    caret-color: auto;
+  }
 }

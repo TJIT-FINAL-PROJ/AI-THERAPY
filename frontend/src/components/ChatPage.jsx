@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import Lottie from "lottie-react";
 import chatbotAnimation from "../assets/chatbot.json";
 import chatbotAvatar from "../assets/avatars/avatarchatbot.png";
+import { useTheme } from "../contexts/ThemeContext";
 
 const generateTitleFromMessages = (messages) => {
   const text = messages.map((m) => m.text.toLowerCase()).join(" ");
@@ -18,6 +19,9 @@ const generateTitleFromMessages = (messages) => {
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
+
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -175,7 +179,11 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="h-screen flex">
+    <div
+      className={`h-screen flex transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-900 text-gray-100" : "bg-pink-50 text-gray-800"
+      }`}
+    >
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -189,11 +197,21 @@ const ChatPage = () => {
         user={user}
       />
 
-      <main className="flex-1 flex flex-col bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
+      <main
+        className={`flex-1 flex flex-col transition-colors duration-300 ${
+          isDarkMode
+            ? "bg-gray-900"
+            : "bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100"
+        }`}
+      >
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500 text-center">
+              <p
+                className={`text-center ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
                 💬 No conversations yet. Start by sending a message!
               </p>
             </div>
@@ -216,13 +234,19 @@ const ChatPage = () => {
                   className={`px-4 py-2 rounded-2xl max-w-xs shadow flex flex-col ${
                     msg.sender === "user"
                       ? "bg-pink-500 text-white"
+                      : isDarkMode
+                      ? "bg-gray-800 text-gray-100 border border-gray-700"
                       : "bg-white text-gray-800 border border-pink-200"
                   }`}
                 >
                   <span>{msg.text}</span>
                   <span
                     className={`text-xs mt-1 self-end ${
-                      msg.sender === "user" ? "text-pink-100" : "text-gray-500"
+                      msg.sender === "user"
+                        ? "text-pink-100"
+                        : isDarkMode
+                        ? "text-gray-400"
+                        : "text-gray-500"
                     }`}
                   >
                     {new Date(msg.created_at).toLocaleTimeString([], {
@@ -255,19 +279,33 @@ const ChatPage = () => {
           <div ref={bottomRef} />
         </div>
 
-        <div className="p-4 border-t bg-pink-50 flex items-center gap-2">
+        <div
+          className={`p-4 border-t flex items-center gap-2 transition-colors duration-300 ${
+            isDarkMode
+              ? "bg-gray-800 border-gray-700"
+              : "bg-pink-50 border-pink-200"
+          }`}
+        >
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className={`flex-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 transition-colors duration-300 ${
+              isDarkMode
+                ? "bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-pink-400"
+                : "bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:ring-pink-400"
+            }`}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim()}
-            className="p-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`p-2 rounded-xl transition-colors duration-300 ${
+              isDarkMode
+                ? "bg-pink-400 hover:bg-pink-500 text-gray-900"
+                : "bg-pink-500 hover:bg-pink-600 text-white"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <Send className="w-5 h-5" />
           </button>
@@ -275,9 +313,13 @@ const ChatPage = () => {
       </main>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div
+            className={`p-6 rounded-2xl shadow-lg w-80 transition-colors duration-300 ${
+              isDarkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-800"
+            }`}
+          >
+            <h2 className="text-lg font-semibold mb-4">
               Are you sure you want to log out?
             </h2>
             <div className="flex justify-end gap-3">
@@ -286,13 +328,21 @@ const ChatPage = () => {
                   setShowModal(false);
                   setIsSidebarOpen(false);
                 }}
-                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 ${
+                  isDarkMode
+                    ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-medium"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 ${
+                  isDarkMode
+                    ? "bg-pink-400 hover:bg-pink-500 text-gray-900"
+                    : "bg-pink-500 hover:bg-pink-600 text-white"
+                }`}
               >
                 Logout
               </button>
@@ -302,10 +352,14 @@ const ChatPage = () => {
       )}
 
       {loading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded-xl shadow-lg flex items-center gap-3">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className={`p-4 rounded-xl shadow-lg flex items-center gap-3 transition-colors duration-300 ${
+              isDarkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-700"
+            }`}
+          >
             <div className="w-6 h-6 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium">Logging out...</span>
+            <span>Logging out...</span>
           </div>
         </div>
       )}

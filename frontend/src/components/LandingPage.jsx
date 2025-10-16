@@ -20,9 +20,9 @@ const LandingPage = () => {
 
       if (currentUser) {
         if (!currentUser.user_metadata?.mood || !currentUser.user_metadata?.goal) {
-          setShowOnboarding(true); // 🚀 show onboarding instead of landing
+          setShowOnboarding(true);
         } else {
-          navigate("/chat"); // 🚀 straight to chat if onboarding already done
+          navigate("/chat");
         }
       }
       setLoading(false);
@@ -30,7 +30,6 @@ const LandingPage = () => {
 
     checkSession();
 
-    // ✅ listen to changes (login/logout)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -58,44 +57,42 @@ const LandingPage = () => {
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center dark:text-gray-200">Loading...</div>;
   }
 
-  // 🔑 If onboarding is required → show the modal directly here
   if (showOnboarding) {
     return <OnboardingModal onClose={() => navigate("/chat")} />;
   }
 
-  // Otherwise → render your actual landing page
-  // 👇 UPDATED COLOR PALETTE
-  const gradientBg = "bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100";
-  const primaryText = "text-pink-600";
-  const darkText = "text-pink-700";
+  const gradientBg =
+    "bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900";
+  const primaryText = "text-pink-600 dark:text-pink-400";
+  const darkText = "text-pink-700 dark:text-pink-300";
 
   return (
-    <div className={`h-[100vh] flex flex-col ${gradientBg} overflow-x-hidden`}>
+    <div className={`h-[100vh] flex flex-col ${gradientBg} overflow-x-hidden transition-colors duration-300`}>
       {/* Header */}
       <header className="w-full flex justify-between items-center py-4 px-12 md:px-28 bg-transparent">
         <div className="flex items-center">
-          <span className="text-2xl font-bold text-pink-700">TASKEEASE</span>
+          <span className="text-2xl font-bold text-pink-700 dark:text-pink-400">TASKEEASE</span>
         </div>
-        <nav className="hidden md:flex space-x-6 lg:space-x-8 text-pink-700 text-lg">
-          <a href="#" className="hover:text-pink-900">Home</a>
-          <a href="#" className="hover:text-pink-900">How it works</a>
-          <a href="#" className="hover:text-pink-900">Blog</a>
+        <nav className="hidden md:flex space-x-6 lg:space-x-8 text-pink-700 dark:text-pink-300 text-lg">
+          <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">Home</a>
+          <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">How it works</a>
+          <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">Blog</a>
         </nav>
         <div className="flex items-center space-x-3 md:space-x-4">
           {!user ? (
             <>
               <Link
                 to="/auth?mode=login"
-                className="hidden md:block text-pink-700 hover:text-pink-900"
+                className="hidden md:block text-pink-700 dark:text-pink-300 hover:text-pink-900 dark:hover:text-pink-400"
               >
                 Sign in
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="bg-pink-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-pink-700 transition-colors"
+                className="bg-pink-600 dark:bg-pink-500 text-white px-5 py-2 rounded-full font-semibold hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors"
               >
                 Sign up
               </Link>
@@ -103,7 +100,7 @@ const LandingPage = () => {
           ) : (
             <button
               onClick={handleLogout}
-              className="bg-pink-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-pink-700 transition-colors"
+              className="bg-pink-600 dark:bg-pink-500 text-white px-5 py-2 rounded-full font-semibold hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors"
             >
               Logout
             </button>
@@ -122,7 +119,7 @@ const LandingPage = () => {
                 <span className={primaryText}>Therapy, </span>
                 <span className={darkText}>Right in Your Pocket</span>
               </h1>
-              <p className="mt-4 text-base md:text-lg text-pink-700 max-w-xl mx-auto md:mx-0">
+              <p className="mt-4 text-base md:text-lg text-pink-700 dark:text-pink-300 max-w-xl mx-auto md:mx-0">
                 Find a new path to mental wellness with our AI-driven therapy platform.
                 Experience compassionate support, personalized coping strategies,
                 and real-time guidance tailored to your needs, all available anytime, anywhere.
@@ -130,11 +127,11 @@ const LandingPage = () => {
               <div className="flex flex-col md:flex-row items-center justify-center md:justify-start mt-5 space-y-3 md:space-y-0 md:space-x-5">
                 <Link
                   to="/auth?mode=signup"
-                  className="bg-pink-600 text-white px-7 py-3 rounded-full font-semibold hover:bg-pink-700 transition-colors shadow-lg text-center"
+                  className="bg-pink-600 dark:bg-pink-500 text-white px-7 py-3 rounded-full font-semibold hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors shadow-lg text-center"
                 >
                   Get Started
                 </Link>
-                <a href="#" className="text-pink-600 font-semibold hover:underline">
+                <a href="#" className="text-pink-600 dark:text-pink-400 font-semibold hover:underline">
                   How it works?
                 </a>
               </div>
@@ -143,11 +140,7 @@ const LandingPage = () => {
             {/* Right Animation */}
             <div className="md:w-1/2 flex justify-center md:justify-end">
               <div className="w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[500px] md:h-[500px] lg:w-[560px] lg:h-[560px] flex items-center justify-center">
-                <Lottie
-                  animationData={landingPageAnimation}
-                  loop={true}
-                  autoplay={true}
-                />
+                <Lottie animationData={landingPageAnimation} loop={true} autoplay={true} />
               </div>
             </div>
           </main>

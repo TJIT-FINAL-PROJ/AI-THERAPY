@@ -20,12 +20,9 @@ const moodNames = {
 
 const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
   const [filterDays, setFilterDays] = useState(7); // last 7/14/30 days filter
-
   const filteredMoodData = Array.isArray(moodData) ? moodData.slice(-filterDays) : [];
-
   const lastMoodEntry = filteredMoodData[filteredMoodData.length - 1];
 
-  // Calculate most frequent mood safely
   const mostFrequentMood = (() => {
     if (!filteredMoodData.length) return null;
     const counts = {};
@@ -39,10 +36,10 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
   })();
 
   return (
-    <div className="space-y-6 text-sm text-gray-700">
+    <div className="space-y-6 text-sm text-gray-900 dark:text-gray-50 transition-colors duration-300">
       {/* Mood Snapshot */}
       <motion.h3
-        className="text-xl font-semibold text-pink-700"
+        className="text-xl font-semibold text-pink-700 dark:text-pink-400"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -56,27 +53,35 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="bg-pink-50 p-4 rounded-xl text-center">
-          <p className="text-lg">😊</p>
-          <p className="font-semibold">Last Mood</p>
-          <p className="text-xs text-gray-500">
-            {lastMoodEntry ? moodNames[lastMoodEntry.mood] : "N/A"}
-          </p>
-        </div>
+        {["Last Mood", "Most Frequent", "Total Sessions"].map((title, idx) => {
+          const value =
+            title === "Last Mood"
+              ? lastMoodEntry
+                ? moodNames[lastMoodEntry.mood]
+                : "N/A"
+              : title === "Most Frequent"
+              ? mostFrequentMood
+                ? moodNames[mostFrequentMood]
+                : "N/A"
+              : filteredMoodData.length;
 
-        <div className="bg-pink-50 p-4 rounded-xl text-center">
-          <p className="text-lg">❤️</p>
-          <p className="font-semibold">Most Frequent</p>
-          <p className="text-xs text-gray-500">
-            {mostFrequentMood ? moodNames[mostFrequentMood] : "N/A"}
-          </p>
-        </div>
-
-        <div className="bg-pink-50 p-4 rounded-xl text-center">
-          <p className="text-lg">🗓️</p>
-          <p className="font-semibold">Total Sessions</p>
-          <p className="text-xs text-gray-500">{filteredMoodData.length}</p>
-        </div>
+          return (
+            <div
+              key={idx}
+              className="bg-pink-50 dark:bg-gray-700 p-4 rounded-xl text-center transition-colors duration-300"
+            >
+              <p className="text-lg">
+                {title === "Last Mood"
+                  ? "😊"
+                  : title === "Most Frequent"
+                  ? "❤️"
+                  : "🗓️"}
+              </p>
+              <p className="font-semibold">{title}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-300">{value}</p>
+            </div>
+          );
+        })}
       </motion.div>
 
       {/* Mood Trend */}
@@ -89,7 +94,11 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
         {filteredMoodData.length ? (
           <ResponsiveContainer width="100%" height={150}>
             <BarChart data={filteredMoodData}>
-              <XAxis dataKey="day" />
+              <XAxis
+                dataKey="day"
+                tick={{ fill: "#1f2937" }}
+                className="dark:text-gray-50"
+              />
               <Tooltip
                 formatter={(value) => moodNames[value] || "N/A"}
                 labelFormatter={(label, payload) => {
@@ -111,7 +120,9 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-gray-500 mt-2">No mood data available.</p>
+          <p className="text-gray-500 dark:text-gray-300 mt-2">
+            No mood data available.
+          </p>
         )}
 
         {/* Filter Days */}
@@ -120,10 +131,10 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
             <motion.button
               key={days}
               onClick={() => setFilterDays(days)}
-              className={`px-2 py-1 rounded ${
+              className={`px-2 py-1 rounded transition-colors duration-300 ${
                 filterDays === days
                   ? "bg-pink-600 text-white"
-                  : "bg-gray-200 text-gray-700"
+                  : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-50"
               }`}
               whileHover={{ scale: 1.05 }}
             >
@@ -133,36 +144,29 @@ const MoodSettings = ({ moodData = [], onboarding = {}, setOnboarding }) => {
         </div>
       </motion.div>
 
-      {/* Mood + Goal (moved from Bio) */}
+      {/* Current Mood & Goal */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.3 }}
       >
-        <h4 className="font-semibold mt-6 text-pink-700">Current Mood & Goal</h4>
+        <h4 className="font-semibold mt-6 text-pink-700 dark:text-pink-400">
+          Current Mood & Goal
+        </h4>
         <div className="grid grid-cols-2 gap-4 mt-2">
-          <div className="flex flex-col">
-            <label className="font-medium">Mood</label>
-            <input
-              type="text"
-              value={onboarding?.mood || ""}
-              onChange={(e) =>
-                setOnboarding({ ...onboarding, mood: e.target.value })
-              }
-              className="border p-2 rounded border-pink-400"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="font-medium">Goal</label>
-            <input
-              type="text"
-              value={onboarding?.goal || ""}
-              onChange={(e) =>
-                setOnboarding({ ...onboarding, goal: e.target.value })
-              }
-              className="border p-2 rounded border-pink-400"
-            />
-          </div>
+          {["mood", "goal"].map((field) => (
+            <div key={field} className="flex flex-col">
+              <label className="font-medium">{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+              <input
+                type="text"
+                value={onboarding?.[field] || ""}
+                onChange={(e) =>
+                  setOnboarding({ ...onboarding, [field]: e.target.value })
+                }
+                className="border p-2 rounded border-pink-400 dark:border-pink-300 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 transition-colors duration-300"
+              />
+            </div>
+          ))}
         </div>
       </motion.div>
     </div>

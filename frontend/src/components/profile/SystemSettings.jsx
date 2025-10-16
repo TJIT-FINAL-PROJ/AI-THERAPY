@@ -1,10 +1,13 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const SystemSettings = ({ preferences, setPreferences }) => {
+  const { theme, changeTheme } = useTheme();
+
   return (
-    <div className="space-y-6 text-sm text-gray-700">
-      <h3 className="text-xl font-semibold text-pink-700">Preferences</h3>
+    <div className="space-y-6 text-sm text-gray-900 dark:text-gray-50 transition-colors duration-300">
+      <h3 className="text-xl font-semibold text-pink-700 dark:text-pink-400">Preferences</h3>
 
       <motion.div
         className="grid grid-cols-2 gap-4"
@@ -17,8 +20,10 @@ const SystemSettings = ({ preferences, setPreferences }) => {
           <label className="font-medium">Tone</label>
           <select
             value={preferences.tone}
-            onChange={(e) => setPreferences({ ...preferences, tone: e.target.value })}
-            className="w-full border rounded p-2"
+            onChange={(e) =>
+              setPreferences({ ...preferences, tone: e.target.value })
+            }
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option>Calm</option>
             <option>Motivational</option>
@@ -35,7 +40,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
             onChange={(e) =>
               setPreferences({ ...preferences, defaultMode: e.target.value })
             }
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option>Conversation</option>
             <option>Voice-only</option>
@@ -50,7 +55,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
             onChange={(e) =>
               setPreferences({ ...preferences, sessionLength: e.target.value })
             }
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option>No limit</option>
             <option>30 min</option>
@@ -62,9 +67,13 @@ const SystemSettings = ({ preferences, setPreferences }) => {
         <div>
           <label className="font-medium">Theme</label>
           <select
-            value={preferences.theme || "Light"}
-            onChange={(e) => setPreferences({ ...preferences, theme: e.target.value })}
-            className="w-full border rounded p-2"
+            value={theme === "dark" ? "Dark" : "Light"}
+            onChange={(e) => {
+              const newTheme = e.target.value === "Dark" ? "dark" : "light";
+              changeTheme(newTheme);
+              setPreferences({ ...preferences, theme: e.target.value });
+            }}
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option>Light</option>
             <option>Dark</option>
@@ -85,6 +94,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
           onChange={(e) =>
             setPreferences({ ...preferences, autoGreet: e.target.checked })
           }
+          className="accent-pink-500 dark:accent-pink-400"
         />
         <span>Auto-greet on session start</span>
       </motion.div>
@@ -102,6 +112,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
           onChange={(e) =>
             setPreferences({ ...preferences, notifications: e.target.checked })
           }
+          className="accent-pink-500 dark:accent-pink-400"
         />
         <span>Enable daily check-in & reminders</span>
       </motion.div>
@@ -120,7 +131,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
             onChange={(e) =>
               setPreferences({ ...preferences, voice: e.target.value })
             }
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option>Female</option>
             <option>Male</option>
@@ -132,9 +143,12 @@ const SystemSettings = ({ preferences, setPreferences }) => {
           <select
             value={preferences.playbackSpeed || 1.0}
             onChange={(e) =>
-              setPreferences({ ...preferences, playbackSpeed: parseFloat(e.target.value) })
+              setPreferences({
+                ...preferences,
+                playbackSpeed: parseFloat(e.target.value),
+              })
             }
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 border-gray-300 dark:border-gray-600 transition-colors duration-300"
           >
             <option value={0.75}>0.75x</option>
             <option value={1.0}>1x</option>
@@ -148,8 +162,12 @@ const SystemSettings = ({ preferences, setPreferences }) => {
             type="checkbox"
             checked={preferences.autoplayReply}
             onChange={(e) =>
-              setPreferences({ ...preferences, autoplayReply: e.target.checked })
+              setPreferences({
+                ...preferences,
+                autoplayReply: e.target.checked,
+              })
             }
+            className="accent-pink-500 dark:accent-pink-400"
           />
           <span>Autoplay reply</span>
         </div>

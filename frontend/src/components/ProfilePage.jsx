@@ -168,24 +168,24 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
-        <p className="text-pink-700 font-medium text-lg animate-pulse">Loading profile...</p>
+      <div className="min-h-screen flex items-center justify-center bg-rose-100 dark:bg-gray-900 text-gray-900 dark:text-gray-50">
+        <p className="text-pink-600 font-medium text-lg animate-pulse">Loading profile...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-xl px-8 pt-24 relative grid grid-cols-5 gap-8 min-h-[65vh]">
+    <div className="min-h-screen bg-rose-100 dark:bg-gray-900 text-gray-900 dark:text-gray-50 flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl px-8 pt-24 relative grid grid-cols-5 gap-8 min-h-[65vh] transition-colors duration-300">
         <button
           onClick={() => navigate("/chat")}
-          className="absolute top-6 left-6 text-pink-600 font-medium hover:underline"
+          className="absolute top-6 left-6 text-pink-600 dark:text-pink-500 transition-colors duration-300 font-medium hover:underline"
         >
           ← Back
         </button>
 
         <motion.h2
-          className="absolute top-6 left-1/2 transform -translate-x-1/2 text-3xl font-bold text-pink-700"
+          className="absolute top-6 left-1/2 transform -translate-x-1/2 text-3xl font-bold text-pink-700 dark:text-pink-500 transition-colors duration-300"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -194,7 +194,7 @@ const ProfilePage = () => {
         </motion.h2>
 
         {/* LEFT MENU */}
-        <div className="col-span-1 border-r border-gray-200 pt-6 space-y-2 bg-rose-50 rounded-l-2xl p-4">
+        <div className="col-span-1 border-r border-gray-200 dark:border-gray-700 pt-6 space-y-2 bg-rose-50 dark:bg-gray-900 rounded-l-2xl p-4 transition-colors duration-300">
           {["Bio", "System Settings", "Mood Settings", "Security & Account"].map((tab) => (
             <motion.button
               key={tab}
@@ -203,11 +203,11 @@ const ProfilePage = () => {
                 setIsEditing(false);
                 setAvatarEditing(false);
               }}
-              className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
-                activeSection === tab
-                  ? "bg-pink-100 text-pink-700"
-                  : "hover:bg-gray-50 text-gray-700"
-              }`}
+className={`w-full text-left px-4 py-2 rounded-lg font-medium transition 
+  ${activeSection === tab
+    ? "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300"
+    : "hover:bg-gray-50 text-gray-700 dark:hover:bg-gray-700 dark:text-gray-200"
+}`}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >

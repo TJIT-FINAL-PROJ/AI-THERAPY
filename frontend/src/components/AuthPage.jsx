@@ -35,67 +35,40 @@ const AuthPage = () => {
     checkSession();
   }, [mode]);
 
-  // ✅ Fetch profile from profiles table
   const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
     if (!error) setProfile(data);
   };
 
-  // ✅ Login/Signup
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
 
     try {
       if (isLogin) {
-        // LOGIN
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return setMessage(error.message);
-
         setCurrentUser(data.user);
         await fetchProfile(data.user.id);
-
-        if (!profile?.mood || !profile?.goal) {
-          setShowOnboarding(true);
-        } else {
-          navigate("/chat");
-        }
+        if (!profile?.mood || !profile?.goal) setShowOnboarding(true);
+        else navigate("/chat");
       } else {
-        // SIGNUP
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            data: { full_name: fullName }, // goes into auth metadata first
-          },
+          options: { data: { full_name: fullName } },
         });
         if (error) return setMessage(error.message);
-
         if (data.user) {
-          // ✅ Immediately log them in
-          const { data: loginData, error: loginError } =
-            await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
           if (loginError) return setMessage(loginError.message);
-
           setCurrentUser(loginData.user);
           await fetchProfile(loginData.user.id);
-
-          if (!profile?.mood || !profile?.goal) {
-            setShowOnboarding(true);
-          } else {
-            navigate("/chat");
-          }
+          if (!profile?.mood || !profile?.goal) setShowOnboarding(true);
+          else navigate("/chat");
         }
       }
     } catch (err) {
@@ -103,7 +76,6 @@ const AuthPage = () => {
     }
   };
 
-  // ✅ Google login
   const handleGoogleLogin = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -116,7 +88,6 @@ const AuthPage = () => {
     }
   };
 
-  // ✅ OTP login
   const handleOtpLogin = async () => {
     if (!email) return alert("Please enter your email first");
     const { error } = await supabase.auth.signInWithOtp({ email });
@@ -127,34 +98,20 @@ const AuthPage = () => {
     }
   };
 
-  // ✅ Verify OTP
   const handleOtpVerify = async () => {
     if (!otpCode) return alert("Enter the OTP you received in email");
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: otpCode,
-      type: "email",
-    });
+    const { data, error } = await supabase.auth.verifyOtp({ email, token: otpCode, type: "email" });
     if (error) setMessage(error.message);
     else {
       setCurrentUser(data.user);
       await fetchProfile(data.user.id);
-      if (!profile?.mood || !profile?.goal) {
-        setShowOnboarding(true);
-      } else {
-        navigate("/chat");
-      }
+      if (!profile?.mood || !profile?.goal) setShowOnboarding(true);
+      else navigate("/chat");
     }
   };
 
   const handleLogout = async () => {
-    if (
-      window.confirm(
-        `Are you sure you want to log out, ${
-          profile?.full_name || currentUser?.email || "User"
-        }?`
-      )
-    ) {
+    if (window.confirm(`Are you sure you want to log out, ${profile?.full_name || currentUser?.email || "User"}?`)) {
       await supabase.auth.signOut();
       setCurrentUser(null);
       setProfile(null);
@@ -163,40 +120,36 @@ const AuthPage = () => {
   };
 
   return (
-    <section className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100">
-      {showOnboarding && (
-        <OnboardingModal onComplete={() => navigate("/chat")} />
-      )}
+    <section className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-pink-50 via-rose-100 to-peach-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
+      {showOnboarding && <OnboardingModal onComplete={() => navigate("/chat")} />}
       {!showOnboarding && (
-        <div className="bg-white shadow-xl rounded-2xl p-8 w-[90%] max-w-md border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 w-[90%] max-w-md border border-gray-100 dark:border-gray-700 transition-colors duration-300">
           {currentUser ? (
             <div className="text-center space-y-6">
-              <h1 className="text-2xl font-bold text-pink-700">
+              <h1 className="text-2xl font-bold text-pink-700 dark:text-pink-400">
                 Hello, {profile?.full_name || "User"} 👋
               </h1>
-              <p className="text-gray-600">{currentUser.email}</p>
+              <p className="text-gray-600 dark:text-gray-300">{currentUser.email}</p>
               <button
                 onClick={handleLogout}
-                className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600"
+                className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold"
               >
                 Logout
               </button>
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-extrabold mb-6 text-center text-pink-700 tracking-tight">
+              <h1 className="text-3xl font-extrabold mb-6 text-center text-pink-700 dark:text-pink-400 tracking-tight">
                 {isLogin ? "Welcome Back!" : "Create Your Account"}
               </h1>
-              <p className="text-center text-gray-500 mb-6 text-sm">
+              <p className="text-center text-gray-500 dark:text-gray-300 mb-6 text-sm">
                 {isLogin
                   ? "Login to continue exploring Taskeease."
                   : "Sign up to start your mental wellness journey."}
               </p>
 
               {message && (
-                <div className="mb-4 text-center text-sm text-red-500 font-medium">
-                  {message}
-                </div>
+                <div className="mb-4 text-center text-sm text-red-500 font-medium">{message}</div>
               )}
 
               {!otpSent && (
@@ -208,7 +161,7 @@ const AuthPage = () => {
                         placeholder="Full Name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg"
                         required
                       />
                     )}
@@ -217,7 +170,7 @@ const AuthPage = () => {
                       placeholder="Email Address"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg"
                       required
                     />
                     <input
@@ -225,12 +178,12 @@ const AuthPage = () => {
                       placeholder="Password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg"
                       required
                     />
                     <button
                       type="submit"
-                      className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700"
+                      className="w-full bg-pink-600 dark:bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors"
                     >
                       {isLogin ? "Login" : "Sign Up"}
                     </button>
@@ -245,7 +198,7 @@ const AuthPage = () => {
                     </button>
                     <button
                       onClick={handleOtpLogin}
-                      className="w-full bg-pink-100 text-pink-700 py-2 rounded-lg font-medium hover:bg-pink-200"
+                      className="w-full bg-pink-100 dark:bg-gray-700 text-pink-700 dark:text-pink-400 py-2 rounded-lg font-medium hover:bg-pink-200 dark:hover:bg-gray-600"
                     >
                       Login via OTP
                     </button>
@@ -260,11 +213,11 @@ const AuthPage = () => {
                     placeholder="Enter OTP"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg"
                   />
                   <button
                     onClick={handleOtpVerify}
-                    className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700"
+                    className="w-full bg-pink-600 dark:bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 dark:hover:bg-pink-400"
                   >
                     Verify OTP
                   </button>
@@ -273,28 +226,25 @@ const AuthPage = () => {
                       setOtpSent(false);
                       setOtpCode("");
                     }}
-                    className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300"
+                    className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600"
                   >
                     ← Back
                   </button>
                 </div>
               )}
 
-              <p className="mt-6 text-center text-sm text-gray-600">
+              <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
                 {isLogin ? "Don’t have an account?" : "Already have an account?"}{" "}
                 <button
                   onClick={() => setIsLogin(!isLogin)}
-                  className="text-pink-700 font-medium hover:underline"
+                  className="text-pink-700 dark:text-pink-400 font-medium hover:underline"
                 >
                   {isLogin ? "Sign Up" : "Login"}
                 </button>
               </p>
 
               <div className="mt-4 text-center">
-                <Link
-                  to="/"
-                  className="text-pink-700 font-medium hover:underline"
-                >
+                <Link to="/" className="text-pink-700 dark:text-pink-400 font-medium hover:underline">
                   ← Back to Home
                 </Link>
               </div>
