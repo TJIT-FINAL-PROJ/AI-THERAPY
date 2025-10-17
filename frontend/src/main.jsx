@@ -1,16 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App";
+import Root from "./root.jsx";
 import "./index.css";
-import { ThemeProvider } from "./contexts/ThemeContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ThemeProvider>  {/* ✅ wrap the entire app here */}
-        <App />
-      </ThemeProvider>
-    </BrowserRouter>
+    <Root />
   </React.StrictMode>
 );
