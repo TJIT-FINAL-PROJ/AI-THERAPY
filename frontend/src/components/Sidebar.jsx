@@ -249,20 +249,13 @@ const Sidebar = ({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute bottom-12 left-0 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 divide-y">
+            <div className="absolute bottom-12 left-0 w-75 bg-pink-100 text-gray-800 rounded-lg shadow-lg border border-pink-400 z-50 divide-y">
               <div className="flex items-center gap-2 px-4 py-2 text-sm">
                 <Mail className="w-4 h-4 text-gray-500" />
-                <span className="truncate max-w-[150px]" title={user?.email}>
+                <span className="truncate max-w-[180px]" title={user?.email}>
                   {user?.email || "No email"}
                 </span>
               </div>
-              <Link
-                to="/settings"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-              >
-                <Settings className="w-4 h-4 text-gray-600" />
-                Settings
-              </Link>
               <Link
                 to="/profile"
                 className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
