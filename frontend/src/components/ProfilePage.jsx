@@ -131,20 +131,25 @@ const ProfilePage = () => {
     getProfile();
   }, [user]);
 
-  const handleSave = async () => {
-    if (!user?.id) return;
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: user.id,
-      gender: profile.gender,
-      date_of_birth: profile.date_of_birth,
-      avatar_url: profile.avatar_url,
-      updated_at: new Date().toISOString(),
-    });
+const handleSave = async () => {
+  if (!user?.id) return;
 
-    if (profileError) {
-      toast.error("Failed to update profile.");
-      return;
-    }
+  // Prepare clean data (don’t include null or undefined)
+  const updatedProfile = {
+    id: user.id,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (profile.gender) updatedProfile.gender = profile.gender;
+  if (profile.date_of_birth) updatedProfile.date_of_birth = profile.date_of_birth;
+  if (profile.avatar_url) updatedProfile.avatar_url = profile.avatar_url;
+
+  try {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(updatedProfile, { onConflict: ["id"] });
+
+    if (profileError) throw profileError;
 
     const { error: onboardingError } = await supabase
       .from("onboarding")
@@ -156,15 +161,16 @@ const ProfilePage = () => {
         { onConflict: ["user_id"] }
       );
 
-    if (onboardingError) {
-      toast.error("Failed to update mood & goal.");
-      return;
-    }
+    if (onboardingError) throw onboardingError;
 
     toast.success("Profile updated successfully!");
     setIsEditing(false);
     setAvatarEditing(false);
-  };
+  } catch (error) {
+    console.error("Update failed:", error);
+    toast.error("Failed to update profile.");
+  }
+};
 
   if (loading) {
     return (

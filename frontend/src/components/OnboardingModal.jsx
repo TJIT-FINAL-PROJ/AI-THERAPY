@@ -26,9 +26,12 @@ const OnboardingModal = ({ onComplete }) => {
           .from("onboarding")
           .select("answers")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (error) return;
+        if (error && error.code !== "PGRST116") {
+  console.error("Onboarding fetch error:", error);
+  return;
+}
 
         if (data?.answers) {
           setMood(data.answers.mood || "");

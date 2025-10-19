@@ -140,11 +140,11 @@ const Sidebar = ({
                         {items.map((s) => (
                           <div
                             key={s.id}
-                            className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer relative ${
+                            className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer relative transition-all duration-200 ${
                               currentSessionId === s.id
-                                ? "bg-pink-500 text-white"
+                                ? "bg-pink-600 text-white shadow-md"
                                 : "hover:bg-pink-600"
-                            } transition-all duration-200`}
+                            }`}
                             onClick={() => setCurrentSessionId(s.id)}
                           >
                             <div className="flex flex-col flex-1">

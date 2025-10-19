@@ -5,13 +5,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import landingPageAnimation from "../assets/landingPageAnimation1.json";
 import OnboardingModal from "../components/OnboardingModal";
+import { Moon, Sun } from "lucide-react"; // using lucide-react icons for toggle
 
 const LandingPage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false); // local toggle for demo
   const navigate = useNavigate();
 
+  // Handle supabase session (unchanged)
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -56,6 +59,15 @@ const LandingPage = () => {
     setShowOnboarding(false);
   };
 
+  // Toggle dark mode (local)
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDarkMode]);
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center dark:text-gray-200">Loading...</div>;
   }
@@ -72,15 +84,19 @@ const LandingPage = () => {
   return (
     <div className={`h-[100vh] flex flex-col ${gradientBg} overflow-x-hidden transition-colors duration-300`}>
       {/* Header */}
-      <header className="w-full flex justify-between items-center py-4 px-12 md:px-28 bg-transparent">
+      <header className="w-full flex justify-between items-center py-4 px-12 md:px-28 bg-transparent relative">
         <div className="flex items-center">
-          <span className="text-2xl font-bold text-pink-700 dark:text-pink-400">TASKEEASE</span>
+          <span className="text-2xl font-bold text-pink-700 dark:text-pink-400">MINDEASE</span>
         </div>
+
+        {/* Nav links */}
         <nav className="hidden md:flex space-x-6 lg:space-x-8 text-pink-700 dark:text-pink-300 text-lg">
           <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">Home</a>
           <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">How it works</a>
           <a href="#" className="hover:text-pink-900 dark:hover:text-pink-400">Blog</a>
         </nav>
+
+        {/* Auth buttons */}
         <div className="flex items-center space-x-3 md:space-x-4">
           {!user ? (
             <>
@@ -105,6 +121,19 @@ const LandingPage = () => {
               Logout
             </button>
           )}
+
+          {/* 🌗 Theme Toggle */}
+          <button
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            className="ml-3 p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {isDarkMode ? (
+              <Sun className="w-5 h-5 text-yellow-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-gray-800" />
+            )}
+          </button>
         </div>
       </header>
 
