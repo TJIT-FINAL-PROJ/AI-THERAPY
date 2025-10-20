@@ -260,17 +260,21 @@ className={`w-full text-left px-4 py-2 rounded-lg font-medium transition
               </motion.div>
             )}
 
-            {activeSection === "Mood Settings" && (
-              <motion.div
-                key="mood"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <MoodSettings moodData={moodData} />
-              </motion.div>
-            )}
+{activeSection === "Mood Settings" && (
+  <motion.div
+    key="mood"
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -20 }}
+    transition={{ duration: 0.3 }}
+  >
+    <MoodSettings
+      moodData={moodData}
+      onboarding={onboarding}
+      setOnboarding={setOnboarding}
+    />
+  </motion.div>
+)}
 
             {activeSection === "Security & Account" && (
               <motion.div

@@ -7,14 +7,77 @@ import Lottie from "lottie-react";
 import chatbotAnimation from "../assets/chatbot.json";
 import chatbotAvatar from "../assets/avatars/avatarchatbot.png";
 import { useTheme } from "../contexts/ThemeContext";
+import dayjs from "dayjs";
 
 const generateTitleFromMessages = (messages) => {
   const text = messages.map((m) => m.text.toLowerCase()).join(" ");
-  if (text.includes("peace")) return "Peace";
-  if (text.includes("happy") || text.includes("joy")) return "Happiness";
-  if (text.includes("sad") || text.includes("depress")) return "Sadness";
-  if (text.includes("angry") || text.includes("mad")) return "Anger";
-  return "Conversation";
+
+  // 🌞 Positive emotions
+  if (
+    text.includes("happy") || text.includes("joy") || text.includes("excited") ||
+    text.includes("great") || text.includes("awesome") || text.includes("grateful") ||
+    text.includes("amazing") || text.includes("cheerful") || text.includes("delighted") ||
+    text.includes("glad") || text.includes("content")
+  )
+    return "Happiness";
+
+  // 🌿 Calm / peaceful / relaxed moods
+  if (
+    text.includes("peace") || text.includes("calm") || text.includes("relaxed") ||
+    text.includes("serene") || text.includes("chill") || text.includes("comfortable") ||
+    text.includes("stable") || text.includes("balanced")
+  )
+    return "Peace";
+
+  // 💭 Sad / low moods
+  if (
+    text.includes("sad") || text.includes("unhappy") || text.includes("depress") ||
+    text.includes("down") || text.includes("hopeless") || text.includes("lonely") ||
+    text.includes("cry") || text.includes("disappointed") || text.includes("hurt")
+  )
+    return "Sadness";
+
+  // 😡 Angry / irritated
+  if (
+    text.includes("angry") || text.includes("mad") || text.includes("furious") ||
+    text.includes("frustrated") || text.includes("irritated") || text.includes("annoyed") ||
+    text.includes("upset") || text.includes("rage")
+  )
+    return "Anger";
+
+  // 😰 Anxious / stressed
+  if (
+    text.includes("anxious") || text.includes("worried") || text.includes("nervous") ||
+    text.includes("scared") || text.includes("afraid") || text.includes("stress") ||
+    text.includes("tense") || text.includes("uneasy") || text.includes("panic")
+  )
+    return "Anxiety";
+
+  // 🥱 Tired / low energy
+  if (
+    text.includes("tired") || text.includes("sleepy") || text.includes("exhausted") ||
+    text.includes("drained") || text.includes("lazy") || text.includes("fatigued") ||
+    text.includes("burnt out")
+  )
+    return "Fatigue";
+
+  // 🤔 Thoughtful / reflective
+  if (
+    text.includes("thinking") || text.includes("wonder") || text.includes("reflect") ||
+    text.includes("ponder") || text.includes("confused") || text.includes("curious")
+  )
+    return "Thoughtful";
+
+  // 💖 Loving / affectionate
+  if (
+    text.includes("love") || text.includes("care") || text.includes("affection") ||
+    text.includes("kind") || text.includes("support") || text.includes("thankful") ||
+    text.includes("appreciate")
+  )
+    return "Love";
+
+  // 😶 Neutral / general chats
+  return "Neutral";
 };
 
 const ChatPage = () => {
@@ -106,6 +169,24 @@ const ChatPage = () => {
         .catch((err) => console.error("Auto-title update failed:", err));
     }
   }, [messages, currentSessionId, sessions]);
+
+  // 🧠 New useEffect to store emotion each day
+useEffect(() => {
+  if (!userId || messages.length === 0) return;
+
+  const emotion = generateTitleFromMessages(messages);
+
+  const saveEmotionForDay = async () => {
+    const today = dayjs().format("YYYY-MM-DD");
+    const { error } = await supabase.from("user_mood_history").upsert(
+      [{ user_id: userId, date: today, emotion }],
+      { onConflict: ["user_id", "date"] }
+    );
+    if (error) console.error("Error saving emotion:", error);
+  };
+
+  saveEmotionForDay();
+}, [messages]);
 
   const handleLogout = async () => {
     setLoading(true);
