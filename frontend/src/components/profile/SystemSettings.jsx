@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
+import { supabase } from "../../supabaseClient"; // <-- added to read current user
 
 const SystemSettings = ({ preferences, setPreferences }) => {
   const { theme, changeTheme } = useTheme();
@@ -99,7 +100,7 @@ const SystemSettings = ({ preferences, setPreferences }) => {
         <span>Auto-greet on session start</span>
       </motion.div>
 
-      {/* Notifications */}
+      {/* Notifications (updated handler to use actual authenticated user email) */}
       <motion.div
         className="flex items-center gap-2"
         initial={{ opacity: 0, x: -10 }}
@@ -109,9 +110,46 @@ const SystemSettings = ({ preferences, setPreferences }) => {
         <input
           type="checkbox"
           checked={preferences.notifications}
-          onChange={(e) =>
-            setPreferences({ ...preferences, notifications: e.target.checked })
-          }
+          onChange={async (e) => {
+            const checked = e.target.checked;
+            setPreferences({ ...preferences, notifications: checked });
+
+            if (checked) {
+              try {
+                // Get the current authenticated user from Supabase
+                const { data: authData, error: authErr } = await supabase.auth.getUser();
+                if (authErr) {
+                  console.error("Failed to get supabase user:", authErr);
+                }
+
+                const userEmail = authData?.user?.email;
+                if (!userEmail) {
+                  console.warn("No authenticated user email found. Email not sent.");
+                  return;
+                }
+
+                // Call your backend to trigger the Supabase mailer
+                const resp = await fetch("/api/send-email", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    email: userEmail,
+                    subject: "Daily Check-In",
+                    content: "Hey there! 👋 Here’s your daily reminder from your AI assistant!",
+                  }),
+                });
+
+                const json = await resp.json();
+                if (!resp.ok) {
+                  console.error("Notification email failed:", json);
+                } else {
+                  console.log("✅ Notification email triggered!", json);
+                }
+              } catch (err) {
+                console.error("❌ Failed to send notification:", err);
+              }
+            }
+          }}
           className="accent-pink-500 dark:accent-pink-400"
         />
         <span>Enable daily check-in & reminders</span>
