@@ -9,76 +9,103 @@ import chatbotAvatar from "../assets/avatars/avatarchatbot.png";
 import { useTheme } from "../contexts/ThemeContext";
 import dayjs from "dayjs";
 
+// Improved: generateTitleFromMessages(messages)
+// messages = [{ role: 'user'|'bot', text: '...' }, ...]
 const generateTitleFromMessages = (messages) => {
-  const text = messages.map((m) => m.text.toLowerCase()).join(" ");
+  // category => list of keywords (single words or short phrases)
+  const lex = {
+    Happiness: ["happy","joy","excited","great","awesome","grateful","amazing","cheerful","delighted","glad","content","yay","fantastic"],
+    Peace: ["peace","calm","relaxed","serene","chill","comfortable","stable","balanced","zen"],
+    Sadness: ["sad","unhappy","depress","down","hopeless","lonely","cry","disappointed","hurt","sorrow","miserable"],
+    Anger: ["angry","mad","furious","frustrat","irritat","annoyed","upset","rage","pissed"],
+    Anxiety: ["anxious","worried","nervous","scared","afraid","stress","tense","uneasy","panic","panicattack"],
+    Fatigue: ["tired","sleepy","exhausted","drained","lazy","fatigued","burnt out","burned out"],
+    Thoughtful: ["thinking","wonder","reflect","ponder","confused","curious","considering"],
+    Love: ["love","care","affection","kind","support","thankful","appreciate","adoring"]
+  };
 
-  // 🌞 Positive emotions
-  if (
-    text.includes("happy") || text.includes("joy") || text.includes("excited") ||
-    text.includes("great") || text.includes("awesome") || text.includes("grateful") ||
-    text.includes("amazing") || text.includes("cheerful") || text.includes("delighted") ||
-    text.includes("glad") || text.includes("content")
-  )
-    return "Happiness";
+  // Precompile regex for each word with word boundaries to avoid substring matches
+  const compiled = {};
+  for (const [cat, words] of Object.entries(lex)) {
+    compiled[cat] = words.map(w => new RegExp(`\\b${escapeRegex(w)}\\b`, "i"));
+  }
 
-  // 🌿 Calm / peaceful / relaxed moods
-  if (
-    text.includes("peace") || text.includes("calm") || text.includes("relaxed") ||
-    text.includes("serene") || text.includes("chill") || text.includes("comfortable") ||
-    text.includes("stable") || text.includes("balanced")
-  )
-    return "Peace";
+  // helper
+  function escapeRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
 
-  // 💭 Sad / low moods
-  if (
-    text.includes("sad") || text.includes("unhappy") || text.includes("depress") ||
-    text.includes("down") || text.includes("hopeless") || text.includes("lonely") ||
-    text.includes("cry") || text.includes("disappointed") || text.includes("hurt")
-  )
-    return "Sadness";
+  // normalize & tokenize — but keep whole-message strings for phrase matching
+  const joinText = (m) => (m.text || "").toString().replace(/\s+/g, " ").trim();
 
-  // 😡 Angry / irritated
-  if (
-    text.includes("angry") || text.includes("mad") || text.includes("furious") ||
-    text.includes("frustrated") || text.includes("irritated") || text.includes("annoyed") ||
-    text.includes("upset") || text.includes("rage")
-  )
-    return "Anger";
+  // scoring
+  const scores = {};
+  for (const k of Object.keys(lex)) scores[k] = 0;
 
-  // 😰 Anxious / stressed
-  if (
-    text.includes("anxious") || text.includes("worried") || text.includes("nervous") ||
-    text.includes("scared") || text.includes("afraid") || text.includes("stress") ||
-    text.includes("tense") || text.includes("uneasy") || text.includes("panic")
-  )
-    return "Anxiety";
+  // config (tuneable)
+  const USER_WEIGHT = 2;   // user messages count more
+  const BOT_WEIGHT = 1;
+  const NEGATION_WINDOW = 3; // how many tokens before a match to look for negation
+  const NEGATION_PENALTY = -1; // invert or penalize if negated
+  const MIN_CONFIDENCE = 1; // minimal score to choose a category
 
-  // 🥱 Tired / low energy
-  if (
-    text.includes("tired") || text.includes("sleepy") || text.includes("exhausted") ||
-    text.includes("drained") || text.includes("lazy") || text.includes("fatigued") ||
-    text.includes("burnt out")
-  )
-    return "Fatigue";
+  // common negation tokens
+  const negations = new Set(["not","no","never","n't","dont","don't","didn't","cannot","can't","hardly","rarely"]);
 
-  // 🤔 Thoughtful / reflective
-  if (
-    text.includes("thinking") || text.includes("wonder") || text.includes("reflect") ||
-    text.includes("ponder") || text.includes("confused") || text.includes("curious")
-  )
-    return "Thoughtful";
+  // process each message
+  for (const msg of messages) {
+    const text = joinText(msg).toLowerCase();
+    if (!text) continue;
+    const weight = (msg.role === "user") ? USER_WEIGHT : BOT_WEIGHT;
 
-  // 💖 Loving / affectionate
-  if (
-    text.includes("love") || text.includes("care") || text.includes("affection") ||
-    text.includes("kind") || text.includes("support") || text.includes("thankful") ||
-    text.includes("appreciate")
-  )
-    return "Love";
+    // split tokens for negation detection
+    const tokens = text.replace(/[^\w\s']/g, " ").split(/\s+/).filter(Boolean);
 
-  // 😶 Neutral / general chats
+    // for every category and regex, run matches
+    for (const [cat, regexList] of Object.entries(compiled)) {
+      for (const r of regexList) {
+        // find all matches (global not used; use exec loop)
+        let m;
+        const re = new RegExp(r.source, "ig");
+        while ((m = re.exec(text)) !== null) {
+          // get position => compute token index for negation check
+          const charIndex = m.index;
+          // compute approximate token index by counting spaces up to charIndex
+          const prefix = text.slice(0, charIndex);
+          const tokensBefore = prefix.split(/\s+/).filter(Boolean);
+          const tokenIdx = tokensBefore.length - 1;
+          // look back NEGATION_WINDOW tokens to see negation
+          let negated = false;
+          for (let j = Math.max(0, tokenIdx - NEGATION_WINDOW + 1); j <= tokenIdx; j++) {
+            if (negations.has((tokens[j] || "").replace(/[^a-z0-9']/g,""))) {
+              negated = true;
+              break;
+            }
+          }
+
+          if (negated) {
+            scores[cat] += NEGATION_PENALTY * weight;
+          } else {
+            scores[cat] += 1 * weight;
+          }
+        }
+      }
+    }
+  }
+
+  // decide winner
+  // convert to array sorted by score desc
+  const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
+  const [bestCat, bestScore] = sorted[0] || ["Neutral", 0];
+  // check if best score is strong enough and not tied
+  const secondScore = (sorted[1] && sorted[1][1]) || 0;
+
+  if (bestScore >= MIN_CONFIDENCE && (bestScore - secondScore) >= 1) {
+    return bestCat;
+  }
   return "Neutral";
 };
+
 
 const ChatPage = () => {
   const navigate = useNavigate();

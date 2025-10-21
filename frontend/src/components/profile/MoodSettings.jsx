@@ -209,107 +209,121 @@ const MoodSettings = ({ onboarding = {}, setOnboarding }) => {
       </motion.div>
 
       {/* Mood Trend */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <h4 className="font-semibold mt-6">Mood Trend</h4>
-
-{chartData.length ? (
-  filterDays === 30 ? (
-    // Heatmap for 30 days
-    <div className="mt-2">
-      {/* Weekday labels */}
-      <div className="grid grid-cols-7 text-xs text-gray-500 dark:text-gray-400 mb-1">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="text-center">{d}</div>
-        ))}
-      </div>
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {chartData.map((entry, idx) => (
-<div
-  key={idx}
-  onMouseEnter={(e) => {
-    setHoveredCell(entry);
-    setTooltipPos({ x: e.clientX, y: e.clientY });
-  }}
-  onMouseLeave={() => setHoveredCell(null)}
-  className="flex items-center justify-center text-xs font-medium text-gray-700 dark:text-gray-50 rounded-md transition-colors duration-300"
-  style={{
-    backgroundColor: entry.mood
-      ? moodColors[entry.mood] || "#f43f5e"
-      : "#e5e7eb",
-    height: "40px",
-    minWidth: "50px",
-  }}
+{/* Mood Trend */}
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.3, delay: 0.2 }}
 >
-  {dayjs(entry.date).date()}
-</div>
-        ))}
-      </div>
-    </div>
-  ) : (
-    // Bar chart for 7 & 14 days
-    <ResponsiveContainer width="100%" height={150}>
-      <BarChart data={chartData}>
-        <XAxis
-          dataKey="day"
-          tick={{ fill: "#1f2937" }}
-          className="dark:text-gray-50"
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-          {chartData.map((entry, idx) => (
-            <Cell
-              key={idx}
-              fill={entry.mood ? moodColors[entry.mood] || "#f43f5e" : "#e5e7eb"}
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  )
-) : (
-  <p className="text-gray-500 dark:text-gray-300 mt-2">
-    No mood data available.
-  </p>
-)}
-{hoveredCell && (
-  <div
-    className="fixed z-50 p-2 text-sm bg-white dark:bg-gray-700 border rounded shadow"
-    style={{
-      top: tooltipPos.y + 10,
-      left: tooltipPos.x + 10,
-      pointerEvents: "none",
-    }}
-  >
-    {hoveredCell.mood
-      ? `${hoveredCell.day}: ${hoveredCell.mood}`
-      : `${hoveredCell.day}: No data`}
-  </div>
-)}
+  <h4 className="font-semibold mt-6">Mood Trend</h4>
 
-
-        {/* Filter buttons */}
-        <div className="mt-2 flex gap-2 text-xs">
-          {[7, 14, 30].map((days) => (
-            <motion.button
-              key={days}
-              onClick={() => setFilterDays(days)}
-              className={`px-2 py-1 rounded transition-colors duration-300 ${
-                filterDays === days
-                  ? "bg-pink-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-50"
-              }`}
-              whileHover={{ scale: 1.05 }}
-            >
-              Last {days} days
-            </motion.button>
+  {chartData.length ? (
+    filterDays === 30 ? (
+      // Heatmap for 30 days
+      <div className="mt-2">
+        {/* Weekday labels */}
+        <div className="grid grid-cols-7 text-xs text-gray-600 dark:text-gray-300 mb-1">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            <div key={d} className="text-center">{d}</div>
           ))}
         </div>
-      </motion.div>
+
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {chartData.map((entry, idx) => {
+            // Adjust neutral color based on theme
+            const isDark = document.documentElement.classList.contains("dark");
+            const neutralColor = isDark ? "#374151" : "#e5e7eb"; // dark gray vs light gray
+
+            return (
+              <div
+                key={idx}
+                onMouseEnter={(e) => {
+                  setHoveredCell(entry);
+                  setTooltipPos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseLeave={() => setHoveredCell(null)}
+                className="flex items-center justify-center text-xs font-medium rounded-md transition-colors duration-300"
+                style={{
+                  backgroundColor: entry.mood
+                    ? moodColors[entry.mood] || "#f43f5e"
+                    : neutralColor,
+                  color: isDark ? "#f9fafb" : "#1f2937", // readable text
+                  height: "40px",
+                  minWidth: "50px",
+                }}
+              >
+                {dayjs(entry.date).date()}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : (
+      // Bar chart for 7 & 14 days
+      <ResponsiveContainer width="100%" height={150}>
+        <BarChart data={chartData}>
+          <XAxis
+            dataKey="day"
+            tick={{
+              fill: document.documentElement.classList.contains("dark")
+                ? "#f9fafb" // white text in dark mode
+                : "#1f2937", // dark gray text in light mode
+              fontSize: 12,
+            }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+            {chartData.map((entry, idx) => (
+              <Cell
+                key={idx}
+                fill={entry.mood ? moodColors[entry.mood] || "#f43f5e" : "#e5e7eb"}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    )
+  ) : (
+    <p className="text-gray-500 dark:text-gray-300 mt-2">
+      No mood data available.
+    </p>
+  )}
+
+  {hoveredCell && (
+    <div
+      className="fixed z-50 p-2 text-sm bg-white dark:bg-gray-700 border rounded shadow"
+      style={{
+        top: tooltipPos.y + 10,
+        left: tooltipPos.x + 10,
+        pointerEvents: "none",
+      }}
+    >
+      {hoveredCell.mood
+        ? `${hoveredCell.day}: ${hoveredCell.mood}`
+        : `${hoveredCell.day}: No data`}
+    </div>
+  )}
+
+  {/* Filter buttons */}
+  <div className="mt-2 flex gap-2 text-xs">
+    {[7, 14, 30].map((days) => (
+      <motion.button
+        key={days}
+        onClick={() => setFilterDays(days)}
+        className={`px-2 py-1 rounded transition-colors duration-300 ${
+          filterDays === days
+            ? "bg-pink-600 text-white"
+            : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-50"
+        }`}
+        whileHover={{ scale: 1.05 }}
+      >
+        Last {days} days
+      </motion.button>
+    ))}
+  </div>
+</motion.div>
+
 
       {/* Initial Mood & Goal */}
       <motion.div

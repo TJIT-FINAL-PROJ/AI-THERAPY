@@ -231,16 +231,18 @@ const Sidebar = ({
             } w-full rounded-2xl hover:bg-pink-700 transition-all duration-200`}
             onClick={() => setDropdownOpen((prev) => !prev)}
           >
-            <div
-              className={`flex items-center justify-center rounded-2xl bg-white/20 overflow-hidden transition-all duration-300 ${
-                isSidebarOpen ? "w-10 h-10" : "w-12 h-12"
-              }`}
-            >
-              <img
-                src={avatarUrl}
-                className="w-full h-full rounded-2xl border-white"
-              />
-            </div>
+{avatarUrl && (
+  <div
+    className={`flex items-center justify-center rounded-2xl overflow-hidden transition-all duration-300 ${
+      isSidebarOpen ? "w-10 h-10" : "w-12 h-12"
+    }`}
+  >
+    <img
+      src={avatarUrl}
+      className="w-full h-full rounded-2xl"
+    />
+  </div>
+)}
             {isSidebarOpen && (
               <span className="text-sm font-medium truncate">
                 {user?.full_name}
