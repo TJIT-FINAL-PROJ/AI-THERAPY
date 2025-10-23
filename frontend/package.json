@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
     "dayjs": "^1.11.18",
+    "firebase": "^12.4.0",
     "framer-motion": "^12.23.12",
     "lottie": "^0.0.1",
     "lottie-react": "^2.4.1",
