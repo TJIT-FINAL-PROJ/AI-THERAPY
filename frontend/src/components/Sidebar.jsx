@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   User,
   LogOut,
@@ -9,6 +9,7 @@ import {
   Plus,
   MoreVertical,
   Mail,
+  Mic,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
@@ -22,7 +23,10 @@ const Sidebar = ({
   setShowModal,
   setSessions,
   user,
+  voiceModeOn,        // new prop
+  setVoiceModeOn,     // function to toggle
 }) => {
+  const navigate = useNavigate();
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -31,7 +35,7 @@ const Sidebar = ({
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || null);
   const dropdownRef = useRef(null);
 
-  // ✅ Live avatar refresh
+  // Live avatar refresh
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.id) return;
@@ -99,6 +103,11 @@ const Sidebar = ({
     }
   };
 
+  const handleVoiceModeToggle = () => {
+    setVoiceModeOn((prev) => !prev);  // toggle state
+    navigate("/voice-therapy");        // go to voice therapy page
+  };
+
   return (
     <>
       <aside
@@ -129,6 +138,20 @@ const Sidebar = ({
               >
                 <Plus className="w-5 h-5" /> New Conversation
               </button>
+
+              {/* ✅ Voice Therapy Toggle Button */}
+              <button
+                onClick={handleVoiceModeToggle}
+                className={`w-full flex items-center gap-2 px-3 py-2 mb-3 ${
+                  voiceModeOn
+                    ? "bg-pink-700"
+                    : "bg-pink-500 hover:bg-pink-400"
+                } rounded-lg transition-all duration-200`}
+              >
+                <Mic className="w-5 h-5" />
+                {isSidebarOpen && "Voice Therapy Mode"}
+              </button>
+
               <div className="space-y-4 overflow-y-auto">
                 {Object.entries(groupSessions(sessions)).map(([label, items]) =>
                   items.length > 0 ? (
@@ -223,7 +246,7 @@ const Sidebar = ({
           )}
         </div>
 
-        {/* ✅ User Dropdown (Avatar fits hover area) */}
+        {/* User Dropdown */}
         <div className="relative mb-4 px-4" ref={dropdownRef}>
           <button
             className={`flex items-center justify-center ${
@@ -231,22 +254,17 @@ const Sidebar = ({
             } w-full rounded-2xl hover:bg-pink-700 transition-all duration-200`}
             onClick={() => setDropdownOpen((prev) => !prev)}
           >
-{avatarUrl && (
-  <div
-    className={`flex items-center justify-center rounded-2xl overflow-hidden transition-all duration-300 ${
-      isSidebarOpen ? "w-10 h-10" : "w-12 h-12"
-    }`}
-  >
-    <img
-      src={avatarUrl}
-      className="w-full h-full rounded-2xl"
-    />
-  </div>
-)}
+            {avatarUrl && (
+              <div
+                className={`flex items-center justify-center rounded-2xl overflow-hidden transition-all duration-300 ${
+                  isSidebarOpen ? "w-10 h-10" : "w-12 h-12"
+                }`}
+              >
+                <img src={avatarUrl} className="w-full h-full rounded-2xl" />
+              </div>
+            )}
             {isSidebarOpen && (
-              <span className="text-sm font-medium truncate">
-                {user?.full_name}
-              </span>
+              <span className="text-sm font-medium truncate">{user?.full_name}</span>
             )}
           </button>
 
