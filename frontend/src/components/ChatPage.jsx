@@ -12,6 +12,10 @@ const ChatPage = () => {
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
 
+  // ✅ Added sidebar + voice mode state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [voiceModeOn, setVoiceModeOn] = useState(false);
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState(null);
@@ -120,9 +124,8 @@ const ChatPage = () => {
         setTranscriptPreview(finalTranscript);
       }
 
-      // Reset silence timer
       if (silenceTimer.current) clearTimeout(silenceTimer.current);
-      silenceTimer.current = setTimeout(() => stopRecording(), 3000); // auto-stop after ~3s silence
+      silenceTimer.current = setTimeout(() => stopRecording(), 3000);
     };
 
     recognition.onend = () => {
@@ -180,14 +183,19 @@ const ChatPage = () => {
   return (
     <div className={`h-screen flex ${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-pink-50 text-gray-800"}`}>
       <Sidebar
-        isSidebarOpen
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
         sessions={sessions}
         currentSessionId={currentSessionId}
         setCurrentSessionId={setCurrentSessionId}
         handleNewConversation={() => {}}
-        handleLogout={() => supabase.auth.signOut()}
+        setShowModal={() => {}}
+        setSessions={setSessions}
         user={user}
+        voiceModeOn={voiceModeOn}         // ✅ Added
+        setVoiceModeOn={setVoiceModeOn}   // ✅ Added
       />
+
       <main className="flex-1 flex flex-col">
         {/* Chat area */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">

@@ -10,7 +10,7 @@ export default function useSTT({
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [finalText, setFinalText] = useState('');
-  const [sessionFinal, setSessionFinal] = useState(''); // for confirmed text
+  const [sessionFinal, setSessionFinal] = useState('');
 
   useEffect(() => {
     const SpeechRecognition =
@@ -26,13 +26,46 @@ export default function useSTT({
     rec.continuous = continuous;
     rec.interimResults = interimResults;
 
-    rec.onstart = () => setListening(true);
-    rec.onend = () => setListening(false);
-    rec.onerror = (e) => {
-      console.warn('STT error', e);
-      setListening(false);
+    // Start event
+    rec.onstart = () => {
+      console.log('🎙️ STT started');
+      setListening(true);
     };
 
+    // End event — auto restart if in continuous mode
+    rec.onend = () => {
+      console.log('🛑 STT ended');
+      setListening(false);
+
+      if (continuous) {
+        console.log('🔁 Auto-restarting recognition...');
+        try {
+          rec.start();
+        } catch (err) {
+          console.warn('Restart error:', err);
+        }
+      }
+    };
+
+    // Handle errors
+    rec.onerror = (e) => {
+      console.warn('⚠️ STT error', e);
+      setListening(false);
+
+      // Restart automatically except for "no-speech" or "aborted"
+      if (continuous && e.error !== 'no-speech' && e.error !== 'aborted') {
+        console.log('Retrying after error...');
+        setTimeout(() => {
+          try {
+            rec.start();
+          } catch (err) {
+            console.warn('Error restarting after error:', err);
+          }
+        }, 500);
+      }
+    };
+
+    // Handle results
     rec.onresult = (ev) => {
       let interimText = '';
       let finalAccum = '';
@@ -52,6 +85,7 @@ export default function useSTT({
 
     recognitionRef.current = rec;
 
+    // Cleanup
     return () => {
       try {
         recognitionRef.current && recognitionRef.current.stop();
@@ -67,6 +101,7 @@ export default function useSTT({
     if (!recognitionRef.current || listening) return;
     try {
       recognitionRef.current.start();
+      console.log('🎤 STT manually started');
     } catch (e) {
       console.warn('Error starting STT:', e);
     }
@@ -76,6 +111,7 @@ export default function useSTT({
   const stop = useCallback(() => {
     try {
       recognitionRef.current && recognitionRef.current.stop();
+      console.log('🧏 STT manually stopped');
     } catch (e) {
       console.warn('Error stopping STT:', e);
     }
@@ -88,21 +124,21 @@ export default function useSTT({
     setSessionFinal('');
   }, []);
 
-  // Confirm final text (like user taps “send” after preview)
+  // Confirm final text (like user taps “send”)
   const confirmFinal = useCallback(() => {
-    setSessionFinal(finalText); // save confirmed final text
-    resetTranscript(); // reset interim & final for next recording
+    setSessionFinal(finalText);
+    resetTranscript();
   }, [finalText, resetTranscript]);
 
   return {
     supported,
     listening,
-    interim,       // live text while speaking
-    final: finalText,  // cumulative text while speaking
-    confirmed: sessionFinal, // user-confirmed final text
+    interim,        // Live partial text
+    final: finalText, // Collected full text
+    confirmed: sessionFinal, // Confirmed after send
     start,
     stop,
     resetTranscript,
-    confirmFinal, // call this when user presses "send" after preview
+    confirmFinal,
   };
 }
