@@ -1,25 +1,28 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import useSTT from "../hooks/useSTT";
 import useTTS from "../hooks/useTTS";
 import { Mic, Send, XCircle } from "lucide-react";
 import AnimatedOrb from "../components/AnimatedOrb";
+import { useTheme } from "../contexts/ThemeContext";
 
-// Settings (from Settings Page later)
+// Settings stub (wire to Settings page later)
 const voiceSettings = {
   lang: "en-IN",
   preferredVoiceURI: "",
-  proVoice: false,
+  proVoice: false,   // if you later use /api/tts natural voices
   muted: false,
 };
 
 const VoiceTherapyPage = () => {
+  const { theme } = useTheme?.() || { theme: "light" };
+  const isDark = theme === "dark";
+
   const [input, setInput] = useState("");
   const [subtitles, setSubtitles] = useState("");
   const [uiListening, setUiListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [chatHistory, setChatHistory] = useState([]);
 
-  // Speech-to-Text (single utterance)
+  // STT: one utterance per start; no auto-restart
   const {
     supported,
     listening,
@@ -31,13 +34,13 @@ const VoiceTherapyPage = () => {
     setLang: setSTTLang,
   } = useSTT({ lang: voiceSettings.lang, continuous: false, interimResults: true });
 
-  // Text-to-Speech
+  // TTS: web speech
   const { speak, speaking, voices, ready: ttsReady, cancelAll } = useTTS({
     onStart: () => setIsSpeaking(true),
     onEnd: () => setIsSpeaking(false),
   });
 
-  // Keep UI in sync with STT hook
+  // sync UI with hook: if browser ended recognition, reflect it
   useEffect(() => {
     if (!listening && uiListening) setUiListening(false);
   }, [listening]);
@@ -46,19 +49,20 @@ const VoiceTherapyPage = () => {
     setSTTLang?.(voiceSettings.lang);
   }, [voiceSettings.lang]);
 
-  // Choose voice
+  // choose a voice
   const selectedVoice = useMemo(() => {
     if (!ttsReady || !voices?.length) return null;
     const saved = voices.find(v => v.voiceURI === voiceSettings.preferredVoiceURI);
     if (saved) return saved;
     const lang = (voiceSettings.lang || "").toLowerCase();
     const matches = voices.filter(v => (v.lang || "").toLowerCase() === lang);
-    if (matches.length)
+    if (matches.length) {
       return matches.find(v => /female|google/i.test(v.name)) || matches[0];
+    }
     return voices.find(v => /en-/i.test(v.lang)) || voices[0];
   }, [ttsReady, voices]);
 
-  // Accept final result on stop
+  // Accept final once and stop listening (single speak → valid result)
   useEffect(() => {
     if (!final) return;
     if (uiListening) {
@@ -67,7 +71,7 @@ const VoiceTherapyPage = () => {
     }
   }, [final, uiListening]);
 
-  // Pause STT if TTS is speaking
+  // If TTS is speaking, force-stop STT
   useEffect(() => {
     if (speaking || isSpeaking) {
       stop();
@@ -75,7 +79,7 @@ const VoiceTherapyPage = () => {
     }
   }, [speaking, isSpeaking, stop]);
 
-  // Stop everything if tab hidden
+  // Stop everything if tab hidden (prevents stuck states)
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden) {
@@ -88,42 +92,31 @@ const VoiceTherapyPage = () => {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [stop, cancelAll]);
 
-  // Fetch dynamic AI reply (Groq API)
+  // Same logic as ChatPage: call your backend /api/chat
   const fetchAIResponse = async (message) => {
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${import.meta.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            {
-              role: "system",
-              content: "You are an empathetic AI therapist offering emotional support, using simple, comforting, and natural language.",
-            },
-            ...chatHistory,
-            { role: "user", content: message },
-          ],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
       });
-
+      if (!res.ok) {
+        console.error("API /api/chat failed:", res.status, await res.text());
+        return "I’m here to listen. Could you say that again?";
+      }
       const data = await res.json();
-      const reply = data?.choices?.[0]?.message?.content || "I'm here to listen.";
-      return reply;
+      return data?.reply || "I’m here to listen.";
     } catch (err) {
-      console.error("Groq API Error:", err);
-      return "I'm having trouble understanding right now. Could you repeat that?";
+      console.error("Network error calling /api/chat:", err);
+      return "I’m here to listen. Could you say that again?";
     }
   };
 
-  // Play voice output
+  // speak helper (web TTS)
   const playWithWebTTS = (text) => {
     if (voiceSettings.muted || !text) return;
     const pitch = 1 + Math.random() * 0.12;
-    const rate = 0.95 + Math.random() * 0.1;
+    const rate  = 0.95 + Math.random() * 0.1;
     const voice = selectedVoice;
     speak(text, {
       voiceId: voice?.voiceURI,
@@ -133,38 +126,18 @@ const VoiceTherapyPage = () => {
     });
   };
 
-  const playWithProTTS = async (text) => {
-    if (voiceSettings.muted || !text) return;
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error("Pro TTS failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      stop();
-      setUiListening(false);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
-    } catch {
-      playWithWebTTS(text);
-    }
-  };
-
-  // Controls
+  // controls
   const handleStartSpeaking = () => {
-    if (speaking || isSpeaking) return;
+    if (speaking || isSpeaking) return; // block while TTS talking
     resetTranscript();
     setUiListening(true);
-    start();
+    start(); // one utterance; browser will auto-end after final
   };
 
   const handleStopListening = () => {
     setUiListening(false);
     stop();
+    // don't clear input; user can discard
   };
 
   const handleDiscard = () => {
@@ -172,7 +145,6 @@ const VoiceTherapyPage = () => {
     resetTranscript();
   };
 
-  // Main Send
   const handleSend = async () => {
     const text = (input || "").trim();
     if (!text) return;
@@ -181,85 +153,144 @@ const VoiceTherapyPage = () => {
     setInput("");
     handleStopListening();
 
-    // Get AI reply
     const botReply = await fetchAIResponse(text);
 
-    // Update subtitles
     setSubtitles(`You: ${text}\nTherapist: ${botReply}`);
-    setChatHistory(prev => [...prev, { role: "user", content: text }, { role: "assistant", content: botReply }]);
-
-    // Speak reply
-    if (voiceSettings.proVoice) playWithProTTS(botReply);
-    else playWithWebTTS(botReply);
+    playWithWebTTS(botReply);
   };
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-pink-50 p-4">
-      {!supported && (
-        <p className="mb-2 text-sm text-red-600">
-          Your browser does not support speech recognition.
-        </p>
-      )}
+    <div className={`relative min-h-screen w-full overflow-hidden ${isDark ? "dark" : ""}`}>
+      {/* Background */}
+      <div className={`absolute inset-0 ${isDark ? "bg-gradient-to-br from-slate-900 via-zinc-900 to-slate-950" : "bg-gradient-to-br from-rose-50 via-pink-50 to-amber-50"}`} />
+      {/* Blobs */}
+      <div className={`pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full ${isDark ? "bg-pink-300/10" : "bg-pink-300/30"} blur-3xl`} />
+      <div className={`pointer-events-none absolute -bottom-20 -right-16 h-96 w-96 rounded-full ${isDark ? "bg-amber-200/10" : "bg-amber-200/30"} blur-3xl`} />
+      <div className={`pointer-events-none absolute top-1/3 right-1/3 h-64 w-64 rounded-full ${isDark ? "bg-rose-200/10" : "bg-rose-200/25"} blur-3xl`} />
 
-      <div className="flex flex-col items-center gap-4 w-full max-w-md">
-        <AnimatedOrb active={uiListening || isSpeaking || speaking} />
+      {/* Content container */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+        <div className={`w-full max-w-2xl rounded-3xl ${isDark ? "border-white/10 bg-white/5" : "border-white/60 bg-white/70"} border backdrop-blur-xl shadow-xl p-6 md:p-8`}>
+          {/* Header */}
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className={`text-2xl md:text-3xl font-semibold tracking-tight ${isDark ? "text-gray-100" : "text-gray-800"}`}>
+                Voice Therapy
+              </h1>
+              <p className={`mt-1 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                A gentle space to talk. I’ll listen, then respond softly.
+              </p>
+            </div>
 
-        {/* Input with Discard */}
-        <div className="w-full relative">
-          <textarea
-            value={interim || input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Speak or type your message..."
-            className="w-full p-3 pr-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white"
-            rows={3}
-          />
-          {!uiListening && (input || interim) ? (
+            {/* Therapist orb + status */}
+            <div className="flex items-center gap-3">
+              <AnimatedOrb active={uiListening || isSpeaking || speaking} />
+              <div
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  uiListening
+                    ? (isDark ? "bg-pink-900/40 text-pink-200" : "bg-pink-100 text-pink-700")
+                    : (isSpeaking || speaking)
+                    ? (isDark ? "bg-amber-900/40 text-amber-200" : "bg-amber-100 text-amber-700")
+                    : (isDark ? "bg-white/10 text-gray-300" : "bg-gray-100 text-gray-600")
+                }`}
+              >
+                {uiListening ? "Listening" : (isSpeaking || speaking) ? "Speaking" : "Idle"}
+              </div>
+            </div>
+          </div>
+
+          {/* Breathing guide bar (gentle animation) */}
+          <div className="mb-5">
+            <div className={`h-2 w-full overflow-hidden rounded-full ${isDark ? "bg-white/10" : "bg-gray-200/80"}`}>
+              <div className={`h-full w-24 animate-breathe rounded-full ${isDark ? "bg-pink-400/70" : "bg-pink-400/80"}`} />
+            </div>
+            <style>{`
+              @keyframes breathe {
+                0% { transform: translateX(0); }
+                50% { transform: translateX(100%); }
+                100% { transform: translateX(0); }
+              }
+              .animate-breathe { animation: breathe 6s ease-in-out infinite; }
+            `}</style>
+          </div>
+
+          {/* Text area + discard */}
+          <div className="relative">
+            <label className={`mb-2 block text-sm font-medium ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+              Your words
+            </label>
+            <textarea
+              value={interim || input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Speak or type your message…"
+              className={`w-full rounded-2xl border p-4 pr-12 shadow-sm outline-none transition
+                ${isDark
+                  ? "border-gray-700 bg-white/5 text-gray-100 placeholder:text-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/30"
+                  : "border-pink-200/60 bg-white/80 text-gray-800 placeholder:text-gray-500 focus:border-pink-400 focus:ring-2 focus:ring-pink-200/70"
+                }`}
+              rows={4}
+            />
+            {!uiListening && (input || interim) ? (
+              <button
+                onClick={handleDiscard}
+                className={`group absolute right-2 top-9 inline-flex items-center gap-1 rounded-full px-3 py-1 transition
+                  ${isDark ? "bg-rose-900/30 text-rose-200 hover:bg-rose-900/50" : "bg-rose-50 text-rose-600 hover:bg-rose-100"}`}
+                title="Discard this line"
+              >
+                <XCircle className="h-4 w-4" />
+                <span className="text-xs font-medium">Discard</span>
+              </button>
+            ) : null}
+          </div>
+
+          {/* Controls */}
+          <div className="mt-5 flex flex-col gap-3 md:flex-row">
+            {!uiListening ? (
+              <button
+                onClick={handleStartSpeaking}
+                disabled={speaking || isSpeaking}
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-white transition shadow-sm
+                  ${speaking || isSpeaking
+                    ? "bg-gray-400/40 cursor-not-allowed"
+                    : "bg-pink-500 hover:bg-pink-600"
+                  }`}
+              >
+                <Mic className="h-5 w-5" />
+                Start Speaking
+              </button>
+            ) : (
+              <button
+                onClick={handleStopListening}
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-white transition shadow-sm
+                  ${isDark ? "bg-rose-600 hover:bg-rose-500" : "bg-rose-500 hover:bg-rose-600"}`}
+              >
+                <Mic className="h-5 w-5 rotate-90" />
+                Stop Listening
+              </button>
+            )}
+
             <button
-              onClick={handleDiscard}
-              className="absolute right-2 top-2 p-2 rounded-md text-rose-600 hover:bg-rose-50"
-              title="Discard this line"
+              onClick={handleSend}
+              className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-white transition shadow-sm
+                ${isDark ? "bg-pink-500 hover:bg-pink-400" : "bg-pink-500 hover:bg-pink-600"}`}
             >
-              <XCircle className="w-5 h-5" />
+              <Send className="h-5 w-5" />
+              Send
             </button>
-          ) : null}
-        </div>
+          </div>
 
-        {/* Controls */}
-        <div className="w-full flex gap-2">
-          {!uiListening ? (
-            <button
-              onClick={handleStartSpeaking}
-              disabled={speaking || isSpeaking}
-              className={`flex-1 py-3 rounded-lg ${
-                speaking || isSpeaking
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-pink-500 hover:bg-pink-600"
-              } text-white flex items-center justify-center gap-2`}
-            >
-              <Mic className="w-5 h-5" />
-              Start Speaking
-            </button>
-          ) : (
-            <button
-              onClick={handleStopListening}
-              className="flex-1 py-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center gap-2"
-            >
-              Stop Listening
-            </button>
-          )}
+          {/* Subtitles / Therapy note */}
+          <div className={`mt-6 rounded-2xl p-4 shadow-sm border
+            ${isDark ? "bg-white/5 border-white/10" : "bg-white/80 border-pink-100"}`}>
+            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+              {subtitles || "Your conversation will appear here."}
+            </p>
+          </div>
 
-          <button
-            onClick={handleSend}
-            className="flex-1 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center gap-2"
-          >
-            <Send className="w-5 h-5" />
-            Send
-          </button>
-        </div>
-
-        {/* Subtitles */}
-        <div className="w-full mt-2 p-3 bg-white border border-gray-200 rounded-lg min-h-[56px] whitespace-pre-wrap">
-          <p className="text-gray-800">{subtitles}</p>
+          {/* Gentle footer tip */}
+          <div className={`mt-4 text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+            Tip: Speak one short thought at a time. You can discard and re-try anytime.
+          </div>
         </div>
       </div>
     </div>
