@@ -268,7 +268,7 @@ const ChatPage = () => {
     }
   };
 
-  // Animation completion handler (Lottie) - persists pending AI reply and optionally speaks it
+  // Animation completion handler (Lottie) - persists pending AI reply and DOES NOT speak it
   const handleAnimationComplete = async () => {
     setIsTyping(false);
     if (pendingAiReply.current) {
@@ -279,9 +279,7 @@ const ChatPage = () => {
         .select();
       if (!aiError && savedAiMsg) {
         setMessages((prev) => [...prev, savedAiMsg[0]]);
-        // TTS playback (if desired). If you do NOT want spoken replies in text-chat mode,
-        // remove or conditionally call speak(). For now we call it to preserve earlier behavior.
-        speak(savedAiMsg[0].text);
+        // TTS playback removed by your request — AI will NOT read messages aloud here.
       }
       pendingAiReply.current = null;
     }
