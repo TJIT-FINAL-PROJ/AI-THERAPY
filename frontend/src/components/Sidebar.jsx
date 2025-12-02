@@ -23,8 +23,8 @@ const Sidebar = ({
   setShowModal,
   setSessions,
   user,
-  voiceModeOn,        // new prop
-  setVoiceModeOn,     // function to toggle
+  voiceModeOn, // new prop
+  setVoiceModeOn, // function to toggle
 }) => {
   const navigate = useNavigate();
   const [menuOpenId, setMenuOpenId] = useState(null);
@@ -104,8 +104,8 @@ const Sidebar = ({
   };
 
   const handleVoiceModeToggle = () => {
-    setVoiceModeOn((prev) => !prev);  // toggle state
-    navigate("/voice-therapy");        // go to voice therapy page
+    setVoiceModeOn((prev) => !prev); // toggle state
+    navigate("/voice-therapy"); // go to voice therapy page
   };
 
   return (
@@ -143,14 +143,36 @@ const Sidebar = ({
               <button
                 onClick={handleVoiceModeToggle}
                 className={`w-full flex items-center gap-2 px-3 py-2 mb-3 ${
-                  voiceModeOn
-                    ? "bg-pink-700"
-                    : "bg-pink-500 hover:bg-pink-400"
+                  voiceModeOn ? "bg-pink-700" : "bg-pink-500 hover:bg-pink-400"
                 } rounded-lg transition-all duration-200`}
               >
                 <Mic className="w-5 h-5" />
                 {isSidebarOpen && "Voice Therapy Mode"}
               </button>
+
+              {/* ✅ Facial Emotion (Beta) Link */}
+              <Link
+                to="/facial-therapy"
+                className="w-full flex items-center gap-2 px-3 py-2 mb-3 bg-pink-500 hover:bg-pink-400 rounded-lg transition-all duration-200"
+              >
+                {/* you can replace with a small icon if you want */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M8 14s1.5-2 4-2 4 2 4 2" />
+                  <path d="M9 9h.01" />
+                  <path d="M15 9h.01" />
+                </svg>
+                {isSidebarOpen && "Facial Emotion (Beta)"}
+              </Link>
 
               <div className="space-y-4 overflow-y-auto">
                 {Object.entries(groupSessions(sessions)).map(([label, items]) =>
