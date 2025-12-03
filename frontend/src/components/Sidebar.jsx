@@ -171,7 +171,7 @@ const Sidebar = ({
                   <path d="M9 9h.01" />
                   <path d="M15 9h.01" />
                 </svg>
-                {isSidebarOpen && "Facial Emotion (Beta)"}
+                {isSidebarOpen && "Facial Emotion"}
               </Link>
 
               <div className="space-y-4 overflow-y-auto">
